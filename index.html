@@ -5,45 +5,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="preload" href="gtaviload1.mp4" as="video" type="video/mp4">
   <link id="favicon" rel="icon" href="">
+  <title>Video</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
+    html, body {
+      margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden;
+      font-family: "Segoe UI", "Microsoft Sans Serif", Tahoma, Arial, sans-serif;
+    }
 
-    /* Background video: fills the screen, no border */
+    /* Local loop video, used while loading */
     #bg {
       position: fixed; inset: 0; width: 100%; height: 100%;
       object-fit: cover; z-index: 1; border: 0; outline: none; background: #000;
     }
 
-    /* Loading screen */
+    /* YouTube video, shown after the loader finishes */
+    #ytwrap { position: fixed; inset: 0; z-index: 1; background: #000; display: none; }
+    #ytwrap iframe, #yt { width: 100%; height: 100%; border: 0; }
+
+    /* Loader: progress bar only */
     #loader {
       position: fixed; inset: 0; z-index: 20; background: #000;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transition: opacity 0.8s;
+      transition: opacity 0.6s;
     }
     #loader.hide { opacity: 0; pointer-events: none; }
-    #slides { position: relative; width: min(80vw, 720px); aspect-ratio: 16 / 9; }
-    #slides img {
-      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
-      border-radius: 8px; opacity: 0; transition: opacity 0.8s;
-    }
-    #slides img.on { opacity: 1; }
     #track {
-      margin-top: 24px; width: min(80vw, 720px); height: 8px;
+      width: min(80vw, 480px); height: 8px;
       background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden;
     }
     #fill { width: 0%; height: 100%; background: #fff; transition: width 0.3s; }
     #status { margin-top: 10px; color: #ccc; font-size: 14px; }
 
-    /* Sound button */
+    /* Wizard window */
+    #wizard {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      z-index: 40; width: min(92vw, 420px); background: #f0f0f0;
+      border: 1px solid #0078d7; box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      color: #000;
+    }
+    #wizard.closed { display: none; }
+    .titlebar {
+      display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 0 0 8px;
+      background: #0078d7; color: #fff; font-size: 12px;
+    }
+    .titlebar svg { width: 18px; height: 18px; flex: 0 0 auto; }
+    .titlebar .title { flex: 1; }
+    #close-btn {
+      width: 46px; height: 32px; border: 0; background: transparent; color: #fff;
+      font-size: 18px; cursor: pointer; font-family: inherit;
+    }
+    #close-btn:hover { background: #e81123; }
+    .wizard-body { padding: 18px 16px 14px; font-size: 13px; line-height: 1.5; }
+    .wizard-body p { margin: 0; }
+    .wizard-footer { display: flex; justify-content: flex-end; padding: 10px 16px 14px; }
+    .wizard-footer button {
+      min-width: 84px; height: 26px; padding: 0 12px; border: 1px solid #adadad;
+      background: #e1e1e1; font-family: inherit; font-size: 12px; cursor: pointer; color: #000;
+    }
+    .wizard-footer button:hover { background: #e5f1fb; border-color: #0078d7; }
+
+    /* Sound button, outside the wizard */
     #sound-btn {
       position: fixed; top: 12px; right: 12px; z-index: 30;
-      width: 40px; height: 40px; padding: 0; border: none; border-radius: 6px;
+      width: 44px; height: 44px; padding: 0; border: none; border-radius: 6px;
       background: rgba(0,0,0,0.6); color: #fff; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
     }
     #sound-btn:hover { background: rgba(0,0,0,0.85); }
-    #sound-btn svg { width: 22px; height: 22px; }
+    #sound-btn svg { width: 24px; height: 24px; }
 
     /* On-screen gamepad */
     #pad {
@@ -74,28 +104,41 @@
   </style>
 </head>
 <body>
-  <video id="bg" src="gtaviload1.mp4" muted loop playsinline webkit-playsinline autoplay preload="auto"></video>
+  <video id="bg" src="gtaviload1.mp4" loop playsinline webkit-playsinline preload="auto" muted></video>
+
+  <div id="ytwrap"><div id="yt"></div></div>
 
   <div id="loader">
-    <div id="slides">
-      <img src="loading/1.jpg" class="on" alt="">
-      <img src="loading/2.jpg" alt="">
-      <img src="loading/3.jpg" alt="">
-      <img src="loading/4.jpg" alt="">
-      <img src="loading/5.jpg" alt="">
-      <img src="loading/6.jpg" alt="">
-    </div>
     <div id="track"><div id="fill"></div></div>
     <div id="status">Loading video… 0%</div>
   </div>
 
-  <button id="sound-btn" aria-label="Sound off" title="Toggle sound (M)">
-    <svg id="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden>
+  <div id="wizard" role="dialog" aria-labelledby="wiz-title">
+    <div class="titlebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M7 6h10a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-1l-2-2h-4l-2 2H7a4 4 0 0 1-4-4v-3a4 4 0 0 1 4-4z"/>
+        <path d="M6 11h4M8 9v4"/>
+        <circle cx="15.5" cy="10.5" r="1" fill="#fff"/>
+        <circle cx="17.5" cy="12.5" r="1" fill="#fff"/>
+      </svg>
+      <span class="title" id="wiz-title">Notice</span>
+      <button id="close-btn" aria-label="Close">×</button>
+    </div>
+    <div class="wizard-body">
+      <p>Edit this message here. It appears in the notice window.</p>
+    </div>
+    <div class="wizard-footer">
+      <button id="ok-btn">OK</button>
+    </div>
+  </div>
+
+  <button id="sound-btn" aria-label="Sound on" title="Toggle sound (M)">
+    <svg id="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
       <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
       <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
     </svg>
-    <svg id="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg id="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden>
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
       <line x1="23" y1="9" x2="17" y2="15"/>
       <line x1="17" y1="9" x2="23" y2="15"/>
@@ -132,6 +175,8 @@
       'Enter': 'start', 'Shift': 'select'
     };
 
+    const YT_ID = 'ARwju5Gyk64';   // your 47-minute YouTube video
+
     const video = document.getElementById('bg');
     const loader = document.getElementById('loader');
     const fill = document.getElementById('fill');
@@ -140,113 +185,149 @@
     const iconOn = document.getElementById('icon-on');
     const iconOff = document.getElementById('icon-off');
     const favicon = document.getElementById('favicon');
+    const wizard = document.getElementById('wizard');
+    const ytwrap = document.getElementById('ytwrap');
 
-    // ----- Autoplay -----
-    function tryPlay() {
-      const p = video.play();
-      if (p) p.catch(() => { /* blocked until the first touch or key press */ });
+    // ----- Wizard -----
+    function closeWizard() { wizard.classList.add('closed'); }
+    document.getElementById('close-btn').addEventListener('click', closeWizard);
+    document.getElementById('ok-btn').addEventListener('click', closeWizard);
+
+    // ----- Sound state: what the user wants (true = muted) -----
+    let muted = false;   // sound on by default
+    let switched = false;
+    let ytPlayer = null;
+    let ytReady = false;
+
+    const ON_PATH = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>';
+    const OFF_PATH = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+    function setFavicon(isMuted) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${isMuted ? '#888' : '#fff'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isMuted ? OFF_PATH : ON_PATH}</svg>`;
+      favicon.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
     }
-    tryPlay();
-    video.addEventListener('canplay', tryPlay);
-
-    // ----- Fullscreen on touch -----
-    function goFullscreen() {
-      const el = document.documentElement;
-      if (document.fullscreenElement || document.webkitFullscreenElement) return;
-      const req = el.requestFullscreen || el.webkitRequestFullscreen;
-      if (req) {
-        try {
-          const r = req.call(el);
-          if (r && r.catch) r.catch(() => {});
-        } catch (e) {}
+    function updateSoundUI() {
+      iconOn.hidden = muted;
+      iconOff.hidden = !muted;
+      soundBtn.setAttribute('aria-label', muted ? 'Sound off' : 'Sound on');
+      setFavicon(muted);
+    }
+    // Apply the desired sound state to whichever player is active
+    function applyMute() {
+      if (switched) {
+        if (ytReady) muted ? ytPlayer.mute() : ytPlayer.unMute();
+      } else {
+        video.muted = muted;
       }
+      updateSoundUI();
     }
-    // Any touch or click requests fullscreen and resumes playback if it was blocked
-    document.addEventListener('pointerdown', () => {
-      goFullscreen();
-      if (video.paused) tryPlay();
-    }, { capture: true });
+    function toggleSound() {
+      muted = !muted;
+      applyMute();
+    }
+    soundBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSound(); });
+    updateSoundUI();
 
-    // ----- Loading slideshow -----
-    const slides = [...document.querySelectorAll('#slides img')];
-    let slideIndex = 0;
-    setInterval(() => {
-      slides[slideIndex].classList.remove('on');
-      slideIndex = (slideIndex + 1) % slides.length;
-      slides[slideIndex].classList.add('on');
-    }, 2500);
-
-    // ----- Loader progress -----
+    // ----- Loader -----
     let loaderDone = false;
-
     function setProgress(pct) {
       fill.style.width = pct + '%';
       status.textContent = `Loading video… ${pct}%`;
     }
-
-    function hideLoader() {
-      if (loaderDone) return;
-      loaderDone = true;
-      setProgress(100);
-      status.textContent = 'Ready';
-      setTimeout(() => loader.classList.add('hide'), 300);
-    }
-
     function bufferedPercent() {
       if (!video.duration || !video.buffered.length) return 0;
       const end = video.buffered.end(video.buffered.length - 1);
       return Math.min(100, Math.round((end / video.duration) * 100));
     }
-
+    function finishLoader() {
+      if (loaderDone) return;
+      loaderDone = true;
+      setProgress(100);
+      status.textContent = 'Ready';
+      setTimeout(() => {
+        loader.classList.add('hide');
+        switchToYouTube();
+      }, 300);
+    }
     video.addEventListener('progress', () => {
-      if (!loaderDone) setProgress(bufferedPercent());
+      if (loaderDone) return;
+      const p = bufferedPercent();
+      setProgress(p);
+      if (p >= 100) finishLoader();
     });
-    video.addEventListener('canplay', hideLoader);
-    video.addEventListener('playing', hideLoader);
+    video.addEventListener('canplaythrough', finishLoader);
     video.addEventListener('error', () => {
-      status.textContent = 'Could not load video. Check that gtaviload1.mp4 is in the repo.';
+      status.textContent = 'Could not load gtaviload1.mp4. Check that it is in the repo.';
     });
+    setTimeout(finishLoader, 30000);   // never keep the loader on screen forever
 
-    // Safety net: never keep the user on the loader forever
-    setTimeout(hideLoader, 30000);
+    // ----- Local video playback (while loading) -----
+    async function startPlayback() {
+      video.muted = muted;
+      try {
+        await video.play();
+      } catch (e) {
+        video.muted = true;               // browser blocked sound: play muted for now
+        try { await video.play(); } catch (err) {}
+      }
+    }
+    startPlayback();
 
-    // ----- Sound -----
-    const ON_PATH = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>';
-    const OFF_PATH = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
-
-    function setFavicon(isMuted) {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${isMuted ? '#888' : '#fff'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isMuted ? OFF_PATH : ON_PATH}</svg>`;
-      favicon.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    // ----- YouTube video (after loader) -----
+    function loadYouTubeAPI(callback) {
+      if (window.YT && window.YT.Player) return callback();
+      window.onYouTubeIframeAPIReady = callback;
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
     }
 
-    function updateSoundUI() {
-      iconOn.hidden = video.muted;
-      iconOff.hidden = !video.muted;
-      soundBtn.setAttribute('aria-label', video.muted ? 'Sound off' : 'Sound on');
-      setFavicon(video.muted);
+    function switchToYouTube() {
+      if (switched) return;
+      switched = true;
+      video.pause();
+      video.style.display = 'none';
+      ytwrap.style.display = 'block';
+
+      loadYouTubeAPI(() => {
+        ytPlayer = new YT.Player('yt', {
+          videoId: YT_ID,
+          host: 'https://www.youtube-nocookie.com',
+          playerVars: {
+            autoplay: 1, mute: 1, playsinline: 1, controls: 0,
+            modestbranding: 1, rel: 0, fs: 0, iv_load_policy: 3, disablekb: 1
+          },
+          events: {
+            onReady: () => {
+              ytReady = true;
+              ytPlayer.playVideo();
+              setTimeout(applyMute, 500);   // unmute if the user wants sound
+            }
+          }
+        });
+      });
     }
 
-    function toggleSound() {
-      video.muted = !video.muted;
-      updateSoundUI();
+    // ----- Fullscreen on first touch, and resume if blocked -----
+    function goFullscreen() {
+      const el = document.documentElement;
+      if (document.fullscreenElement || document.webkitFullscreenElement) return;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) { try { const r = req.call(el); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
     }
-    soundBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSound(); });
+    document.addEventListener('pointerdown', () => {
+      goFullscreen();
+      if (!switched && video.paused) video.play().catch(() => {});
+      if (switched && ytReady && !muted) ytPlayer.unMute();   // first tap unmutes if the browser blocked sound
+      if (!switched && !muted && video.muted) video.muted = false;
+    }, { capture: true });
 
     // ----- Game input -----
-    function onPress(action) {
-      console.log('press', action);   // replace with your handler
-    }
-    function onRelease(action) {
-      console.log('release', action); // replace with your handler
-    }
+    function onPress(action) { console.log('press', action); }     // replace with your handler
+    function onRelease(action) { console.log('release', action); } // replace with your handler
 
     document.querySelectorAll('#pad .btn').forEach((btn) => {
       const action = btn.dataset.action;
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        btn.classList.add('active');
-        onPress(action);
-      });
+      btn.addEventListener('pointerdown', (e) => { e.preventDefault(); btn.classList.add('active'); onPress(action); });
       const release = () => {
         if (!btn.classList.contains('active')) return;
         btn.classList.remove('active');
@@ -279,8 +360,6 @@
         onRelease(action);
       }
     });
-
-    updateSoundUI();
   </script>
 </body>
 </html>
