@@ -1,0 +1,286 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="preload" href="gtaviload1.mp4" as="video" type="video/mp4">
+  <link id="favicon" rel="icon" href="">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
+
+    /* Background video: fills the screen, no border */
+    #bg {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: 1; border: 0; outline: none; background: #000;
+    }
+
+    /* Loading screen */
+    #loader {
+      position: fixed; inset: 0; z-index: 20; background: #000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity 0.8s;
+    }
+    #loader.hide { opacity: 0; pointer-events: none; }
+    #slides { position: relative; width: min(80vw, 720px); aspect-ratio: 16 / 9; }
+    #slides img {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+      border-radius: 8px; opacity: 0; transition: opacity 0.8s;
+    }
+    #slides img.on { opacity: 1; }
+    #track {
+      margin-top: 24px; width: min(80vw, 720px); height: 8px;
+      background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden;
+    }
+    #fill { width: 0%; height: 100%; background: #fff; transition: width 0.3s; }
+    #status { margin-top: 10px; color: #ccc; font-size: 14px; }
+
+    /* Sound button */
+    #sound-btn {
+      position: fixed; top: 12px; right: 12px; z-index: 30;
+      width: 40px; height: 40px; padding: 0; border: none; border-radius: 6px;
+      background: rgba(0,0,0,0.6); color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #sound-btn:hover { background: rgba(0,0,0,0.85); }
+    #sound-btn svg { width: 22px; height: 22px; }
+
+    /* On-screen gamepad */
+    #pad {
+      position: fixed; left: 0; right: 0; bottom: 16px; z-index: 10;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 20px; pointer-events: none;
+    }
+    .group { pointer-events: auto; }
+    .dpad, .face { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 4px; }
+    #up    { grid-column: 2; grid-row: 1; }
+    #left  { grid-column: 1; grid-row: 2; }
+    #right { grid-column: 3; grid-row: 2; }
+    #down  { grid-column: 2; grid-row: 3; }
+    #y { grid-column: 2; grid-row: 1; --c: #2ecc40; }
+    #x { grid-column: 1; grid-row: 2; --c: #ff4136; }
+    #b { grid-column: 3; grid-row: 2; --c: #0074d9; }
+    #a { grid-column: 2; grid-row: 3; --c: #ffdc00; }
+    .btn {
+      width: 50px; height: 50px; border: 2px solid var(--c, rgba(255,255,255,0.7));
+      border-radius: 50%; background: rgba(0,0,0,0.5); color: var(--c, #fff);
+      font-size: 18px; font-weight: bold; cursor: pointer;
+      touch-action: none; user-select: none; -webkit-user-select: none;
+    }
+    .btn.pill { border-radius: 25px; width: 70px; height: 30px; font-size: 12px; border-color: rgba(255,255,255,0.7); color: #fff; --c: none; }
+    .btn:active, .btn.active { background: var(--c, rgba(255,255,255,0.35)); color: #000; }
+    .btn.pill:active, .btn.pill.active { background: rgba(255,255,255,0.35); color: #fff; }
+    .center { display: flex; flex-direction: column; gap: 8px; align-self: center; pointer-events: auto; }
+  </style>
+</head>
+<body>
+  <video id="bg" src="gtaviload1.mp4" muted loop playsinline webkit-playsinline autoplay preload="auto"></video>
+
+  <div id="loader">
+    <div id="slides">
+      <img src="loading/1.jpg" class="on" alt="">
+      <img src="loading/2.jpg" alt="">
+      <img src="loading/3.jpg" alt="">
+      <img src="loading/4.jpg" alt="">
+      <img src="loading/5.jpg" alt="">
+      <img src="loading/6.jpg" alt="">
+    </div>
+    <div id="track"><div id="fill"></div></div>
+    <div id="status">Loading video… 0%</div>
+  </div>
+
+  <button id="sound-btn" aria-label="Sound off" title="Toggle sound (M)">
+    <svg id="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+    </svg>
+    <svg id="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <line x1="23" y1="9" x2="17" y2="15"/>
+      <line x1="17" y1="9" x2="23" y2="15"/>
+    </svg>
+  </button>
+
+  <div id="pad">
+    <div class="group dpad">
+      <button class="btn" id="up" data-action="up">▲</button>
+      <button class="btn" id="left" data-action="left">◀</button>
+      <button class="btn" id="right" data-action="right">▶</button>
+      <button class="btn" id="down" data-action="down">▼</button>
+    </div>
+    <div class="center">
+      <button class="btn pill" id="select" data-action="select">SELECT</button>
+      <button class="btn pill" id="start" data-action="start">START</button>
+    </div>
+    <div class="group face">
+      <button class="btn" id="y" data-action="y">Y</button>
+      <button class="btn" id="x" data-action="x">X</button>
+      <button class="btn" id="b" data-action="b">B</button>
+      <button class="btn" id="a" data-action="a">A</button>
+    </div>
+  </div>
+
+  <script>
+    const KEYMAP = {
+      'ArrowUp': 'up', 'w': 'up', 'W': 'up',
+      'ArrowDown': 'down', 's': 'down', 'S': 'down',
+      'ArrowLeft': 'left', 'a': 'left', 'A': 'left',
+      'ArrowRight': 'right', 'd': 'right', 'D': 'right',
+      'j': 'a', 'J': 'a', 'k': 'b', 'K': 'b',
+      'l': 'y', 'L': 'y', 'i': 'x', 'I': 'x',
+      'Enter': 'start', 'Shift': 'select'
+    };
+
+    const video = document.getElementById('bg');
+    const loader = document.getElementById('loader');
+    const fill = document.getElementById('fill');
+    const status = document.getElementById('status');
+    const soundBtn = document.getElementById('sound-btn');
+    const iconOn = document.getElementById('icon-on');
+    const iconOff = document.getElementById('icon-off');
+    const favicon = document.getElementById('favicon');
+
+    // ----- Autoplay -----
+    function tryPlay() {
+      const p = video.play();
+      if (p) p.catch(() => { /* blocked until the first touch or key press */ });
+    }
+    tryPlay();
+    video.addEventListener('canplay', tryPlay);
+
+    // ----- Fullscreen on touch -----
+    function goFullscreen() {
+      const el = document.documentElement;
+      if (document.fullscreenElement || document.webkitFullscreenElement) return;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) {
+        try {
+          const r = req.call(el);
+          if (r && r.catch) r.catch(() => {});
+        } catch (e) {}
+      }
+    }
+    // Any touch or click requests fullscreen and resumes playback if it was blocked
+    document.addEventListener('pointerdown', () => {
+      goFullscreen();
+      if (video.paused) tryPlay();
+    }, { capture: true });
+
+    // ----- Loading slideshow -----
+    const slides = [...document.querySelectorAll('#slides img')];
+    let slideIndex = 0;
+    setInterval(() => {
+      slides[slideIndex].classList.remove('on');
+      slideIndex = (slideIndex + 1) % slides.length;
+      slides[slideIndex].classList.add('on');
+    }, 2500);
+
+    // ----- Loader progress -----
+    let loaderDone = false;
+
+    function setProgress(pct) {
+      fill.style.width = pct + '%';
+      status.textContent = `Loading video… ${pct}%`;
+    }
+
+    function hideLoader() {
+      if (loaderDone) return;
+      loaderDone = true;
+      setProgress(100);
+      status.textContent = 'Ready';
+      setTimeout(() => loader.classList.add('hide'), 300);
+    }
+
+    function bufferedPercent() {
+      if (!video.duration || !video.buffered.length) return 0;
+      const end = video.buffered.end(video.buffered.length - 1);
+      return Math.min(100, Math.round((end / video.duration) * 100));
+    }
+
+    video.addEventListener('progress', () => {
+      if (!loaderDone) setProgress(bufferedPercent());
+    });
+    video.addEventListener('canplay', hideLoader);
+    video.addEventListener('playing', hideLoader);
+    video.addEventListener('error', () => {
+      status.textContent = 'Could not load video. Check that gtaviload1.mp4 is in the repo.';
+    });
+
+    // Safety net: never keep the user on the loader forever
+    setTimeout(hideLoader, 30000);
+
+    // ----- Sound -----
+    const ON_PATH = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>';
+    const OFF_PATH = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+
+    function setFavicon(isMuted) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${isMuted ? '#888' : '#fff'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${isMuted ? OFF_PATH : ON_PATH}</svg>`;
+      favicon.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    }
+
+    function updateSoundUI() {
+      iconOn.hidden = video.muted;
+      iconOff.hidden = !video.muted;
+      soundBtn.setAttribute('aria-label', video.muted ? 'Sound off' : 'Sound on');
+      setFavicon(video.muted);
+    }
+
+    function toggleSound() {
+      video.muted = !video.muted;
+      updateSoundUI();
+    }
+    soundBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSound(); });
+
+    // ----- Game input -----
+    function onPress(action) {
+      console.log('press', action);   // replace with your handler
+    }
+    function onRelease(action) {
+      console.log('release', action); // replace with your handler
+    }
+
+    document.querySelectorAll('#pad .btn').forEach((btn) => {
+      const action = btn.dataset.action;
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        btn.classList.add('active');
+        onPress(action);
+      });
+      const release = () => {
+        if (!btn.classList.contains('active')) return;
+        btn.classList.remove('active');
+        onRelease(action);
+      };
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointerleave', release);
+      btn.addEventListener('pointercancel', release);
+    });
+
+    const pressed = new Set();
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'm' || e.key === 'M') { toggleSound(); return; }
+      const action = KEYMAP[e.key];
+      if (action) {
+        e.preventDefault();
+        goFullscreen();
+        if (!pressed.has(action)) {
+          pressed.add(action);
+          onPress(action);
+          document.querySelector(`#pad [data-action="${action}"]`)?.classList.add('active');
+        }
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      const action = KEYMAP[e.key];
+      if (action) {
+        pressed.delete(action);
+        document.querySelector(`#pad [data-action="${action}"]`)?.classList.remove('active');
+        onRelease(action);
+      }
+    });
+
+    updateSoundUI();
+  </script>
+</body>
+</html>
