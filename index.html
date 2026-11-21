@@ -7,11 +7,10 @@
 <meta name="color-scheme" content="dark">
 <title>Video</title>
 
-<link rel="preload" href="gtaviload1.mp4" as="video" type="video/mp4">
 <link rel="preconnect" href="https://www.youtube-nocookie.com">
 <link rel="preconnect" href="https://www.youtube.com">
 
-<!-- Favicon (generated SVG, swapped by JS) -->
+<!-- Favicon (inline SVG, swapped by JS) -->
 <link id="favicon" rel="icon" type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='5'%20fill='%23000'/%3E%3Ccircle%20cx='12'%20cy='12'%20r='4'%20fill='%23fff'/%3E%3C/svg%3E">
 
@@ -25,24 +24,36 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* ---------- Background video (visuals only) ---------- */
-  #stage { position: fixed; inset: 0; z-index: 1; transition: filter .45s ease; }
-  #stage.blur { filter: blur(10px) brightness(.55); }
-  #bg {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; background: #000; border: 0; outline: none;
+  /* ---------- Background stage (YouTube video only) ---------- */
+  #stage {
+    position: fixed; inset: 0; z-index: 1;
+    overflow: hidden; background: #000;
+    transition: filter .45s ease;
+  }
+  #stage.blur { filter: blur(14px) brightness(.5); }
+
+  #ytwrap {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    /* size is set by JS to cover the viewport and crop YouTube UI */
+  }
+  #yt {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+  }
+  #yt iframe {
+    position: absolute; inset: 0;
+    width: 100% !important; height: 100% !important;
+    border: 0; pointer-events: none;
   }
 
-  /* ---------- Hidden YouTube engine (audio only) ---------- */
-  #yt-audio {
-    position: fixed; top: 0; left: -10000px;
-    width: 320px; height: 180px; overflow: hidden;
-    pointer-events: none; border: 0; z-index: 0;
+  /* ---------- Transparent tap catcher ---------- */
+  #catch {
+    position: fixed; inset: 0; z-index: 5;
+    background: transparent;
+    touch-action: manipulation;
   }
-  #yt-audio iframe { width: 100%; height: 100%; border: 0; }
-
-  /* ---------- Transparent layer (catches taps, blocks YouTube UI) ---------- */
-  #catch { position: fixed; inset: 0; z-index: 5; background: transparent; touch-action: manipulation; }
 
   /* ---------- Loader ---------- */
   #loader {
@@ -51,9 +62,16 @@
     transition: opacity .6s ease;
   }
   #loader.hide { opacity: 0; pointer-events: none; }
-  #track { width: min(80vw, 480px); height: 8px; background: rgba(255,255,255,.15); border-radius: 4px; overflow: hidden; }
+  #track {
+    width: min(80vw, 480px); height: 8px;
+    background: rgba(255,255,255,.15);
+    border-radius: 4px; overflow: hidden;
+  }
   #fill { width: 0%; height: 100%; background: #fff; transition: width .3s ease; }
-  #status { margin-top: 12px; color: #ccc; font-size: 14px; letter-spacing: .3px; text-align: center; padding: 0 20px; }
+  #status {
+    margin-top: 12px; color: #ccc; font-size: 14px; letter-spacing: .3px;
+    text-align: center; padding: 0 20px;
+  }
 
   /* ---------- Game menu ---------- */
   #menu { position: fixed; inset: 0; z-index: 35; background: rgba(0,0,0,.25); }
@@ -65,10 +83,8 @@
     display: flex; flex-direction: column;
     box-shadow: 2px 0 24px rgba(0,0,0,.6);
   }
-  /* ---- catbox menu graphic replaces the old text logo ---- */
   .menu-logo {
-    display: block;
-    width: 120px; height: auto;
+    display: block; width: 120px; height: auto;
     margin: 0 0 24px 12px;
     image-rendering: -webkit-optimize-contrast;
   }
@@ -89,23 +105,19 @@
   }
   .menu-close:hover { background: rgba(255,255,255,.12); color: #fff; }
 
-  /* ---------- Notice window (wizard) ---------- */
+  /* ---------- Notice window ---------- */
   #wizard {
     position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
     z-index: 40; width: min(92vw, 420px); background: #f0f0f0;
     border: 1px solid #0078d7; box-shadow: 0 8px 30px rgba(0,0,0,.5); color: #000;
   }
   #wizard.closed { display: none; }
-
-  /* ---- Wizard titlebar now holds: [sound] [title] [close] ---- */
   .titlebar {
     display: flex; align-items: center; gap: 4px;
     height: 32px; padding: 0 0 0 6px;
     background: #0078d7; color: #fff; font-size: 12px;
   }
   .titlebar .title { flex: 1; margin-left: 4px; }
-
-  /* ---- icons8‑style buttons inside the wizard ---- */
   .icon-btn {
     width: 30px; height: 30px; padding: 0;
     border: 0; border-radius: 4px;
@@ -116,7 +128,6 @@
   }
   .icon-btn:hover { background: rgba(255,255,255,.22); }
   .icon-btn svg { width: 20px; height: 20px; }
-
   .wizard-body { padding: 18px 16px 14px; font-size: 13px; line-height: 1.5; }
   .wizard-body p { margin: 0; }
   .wizard-footer { display: flex; justify-content: flex-end; padding: 10px 16px 14px; }
@@ -126,7 +137,7 @@
   }
   .wizard-footer button:hover { background: #e5f1fb; border-color: #0078d7; }
 
-  /* ---------- Sound button (global, top‑right) ---------- */
+  /* ---------- Sound button ---------- */
   #sound-btn {
     position: fixed; top: 12px; right: 12px; z-index: 30;
     width: 44px; height: 44px; padding: 0; border: none; border-radius: 8px;
@@ -148,14 +159,19 @@
   }
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-  /* ---------- On‑screen gamepad ---------- */
+  /* ---------- On-screen gamepad ---------- */
   #pad {
     position: fixed; left: 0; right: 0; bottom: 16px; z-index: 10;
     display: flex; justify-content: space-between; align-items: center;
     padding: 0 20px; pointer-events: none;
   }
   .group { pointer-events: auto; }
-  .dpad, .face { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 4px; }
+  .dpad, .face {
+    display: grid;
+    grid-template-columns: repeat(3, 50px);
+    grid-template-rows: repeat(3, 50px);
+    gap: 4px;
+  }
   #up    { grid-column: 2; grid-row: 1; }
   #left  { grid-column: 1; grid-row: 2; }
   #right { grid-column: 3; grid-row: 2; }
@@ -165,17 +181,25 @@
   #b { grid-column: 3; grid-row: 2; --c: #0074d9; }
   #a { grid-column: 2; grid-row: 3; --c: #ffdc00; }
   .btn {
-    width: 50px; height: 50px; border: 2px solid var(--c, rgba(255,255,255,.7));
+    width: 50px; height: 50px;
+    border: 2px solid var(--c, rgba(255,255,255,.7));
     border-radius: 50%; background: rgba(0,0,0,.5); color: var(--c, #fff);
     font-size: 18px; font-weight: bold; cursor: pointer;
     touch-action: none; user-select: none; -webkit-user-select: none;
   }
-  .btn.pill { border-radius: 25px; width: 70px; height: 30px; font-size: 12px; border-color: rgba(255,255,255,.7); color: #fff; --c: none; }
+  .btn.pill {
+    border-radius: 25px; width: 70px; height: 30px;
+    font-size: 12px; border-color: rgba(255,255,255,.7);
+    color: #fff; --c: none;
+  }
   .btn:active, .btn.active { background: var(--c, rgba(255,255,255,.35)); color: #000; }
   .btn.pill:active, .btn.pill.active { background: rgba(255,255,255,.35); color: #fff; }
-  .center { display: flex; flex-direction: column; gap: 8px; align-self: center; pointer-events: auto; }
+  .center {
+    display: flex; flex-direction: column; gap: 8px;
+    align-self: center; pointer-events: auto;
+  }
 
-  /* ---------- Accessibility ---------- */
+  /* ---------- Accessibility & responsive ---------- */
   :focus-visible { outline: 2px solid #ff7aa8; outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
     * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
@@ -190,15 +214,14 @@
 </head>
 <body>
 
-  <!-- Visual background (loops forever) -->
+  <!-- Stage: YouTube video fills this, UI cropped off-screen -->
   <div id="stage">
-    <video id="bg" src="gtaviload1.mp4" loop playsinline webkit-playsinline preload="auto" muted aria-hidden="true"></video>
+    <div id="ytwrap">
+      <div id="yt"></div>
+    </div>
   </div>
 
-  <!-- Hidden YouTube engine: audio only -->
-  <div id="yt-audio" aria-hidden="true"><div id="yt"></div></div>
-
-  <!-- Transparent layer: catches taps & double‑taps -->
+  <!-- Transparent layer: catches double-taps, blocks YouTube hover UI -->
   <div id="catch"></div>
 
   <div id="loader" role="status" aria-live="polite">
@@ -206,7 +229,7 @@
     <div id="status">Loading video… 0%</div>
   </div>
 
-  <!-- Menu panel (catbox logo + same items) -->
+  <!-- Menu -->
   <div id="menu" class="hidden">
     <div class="panel">
       <button id="menu-close" class="menu-close" aria-label="Close menu">✕</button>
@@ -216,10 +239,9 @@
     </div>
   </div>
 
-  <!-- Notice window with icons8‑style sound & close buttons -->
+  <!-- Notice window with sound & close controls -->
   <div id="wizard" class="closed" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
     <div class="titlebar">
-      <!-- Sound toggle (icons8‑style speaker) -->
       <button id="wiz-sound-btn" class="icon-btn" aria-label="Toggle sound" title="Toggle sound (M)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -228,7 +250,6 @@
         </svg>
       </button>
       <span class="title" id="wiz-title">Notice</span>
-      <!-- Close (X) button -->
       <button id="close-btn" class="icon-btn" aria-label="Close">✕</button>
     </div>
     <div class="wizard-body">
@@ -240,7 +261,7 @@
     </div>
   </div>
 
-  <!-- Global sound button (also works) -->
+  <!-- Global sound button -->
   <button id="sound-btn" aria-label="Sound off" title="Toggle sound (M)">
     <svg id="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden>
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -256,6 +277,7 @@
 
   <div id="toast" role="status" aria-live="polite"></div>
 
+  <!-- On-screen gamepad -->
   <div id="pad">
     <div class="group dpad">
       <button class="btn" id="up" data-action="up" aria-label="Up">▲</button>
@@ -280,14 +302,14 @@
   'use strict';
 
   /* ======================= Config ======================= */
-  const YT_ID = 'ARwju5Gyk64';                 // background audio source
+  const YT_ID = 'ARwju5Gyk64';           // 47‑minute video, embedded directly
   const MENU_ITEMS = ['Resume', 'Gallery', 'Store', 'Help', 'Options'];
-  const DOUBLE_TAP_MS = 300;                  // max gap between taps
+  const DOUBLE_TAP_MS = 300;
 
   /* ======================= Refs ======================= */
   const $ = (id) => document.getElementById(id);
-  const video     = $('bg');
   const stage     = $('stage');
+  const ytwrap    = $('ytwrap');
   const loader    = $('loader');
   const fill      = $('fill');
   const statusEl  = $('status');
@@ -301,19 +323,18 @@
   const toastEl   = $('toast');
 
   /* ======================= State ======================= */
-  let muted       = true;    // start muted so autoplay is always allowed
-  let ytPlayer    = null;
-  let ytReady     = false;
-  let ytFailed    = false;
-  let ytStarting  = false;
-  let menuOpen    = false;
-  let sel         = 0;
-  let loaderDone  = false;
-  let hintShown   = false;
+  let player     = null;
+  let ytReady    = false;
+  let ytPlaying  = false;
+  let ytFailed   = false;
+  let muted      = true;          // start muted → autoplay is always allowed
+  let menuOpen   = false;
+  let sel        = 0;
+  let loaderDone = false;
+  let hintShown  = false;
 
   /* ======================= Favicons ======================= */
   const SPEAKER = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#fff" stroke="none"/>';
-
   function wrapSvg(inner) {
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
              '<rect width="24" height="24" rx="5" fill="#000"/>' +
@@ -322,7 +343,6 @@
              '</g>' +
            '</svg>';
   }
-
   const ICONS = {
     loading: wrapSvg('<circle cx="12" cy="12" r="7" stroke-opacity=".3"/><path d="M19 12a7 7 0 0 0-7-7"/>'),
     on:      wrapSvg(SPEAKER + '<path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.9a9 9 0 0 1 0 12.2"/>'),
@@ -330,12 +350,10 @@
     paused:  wrapSvg('<rect x="7" y="5" width="4" height="14" rx="1" fill="#fff" stroke="none"/>' +
                      '<rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" stroke="none"/>')
   };
-
   function setFavicon(name) {
     const url = 'data:image/svg+xml,' + encodeURIComponent(ICONS[name] || ICONS.loading);
     if (favicon.getAttribute('href') !== url) favicon.setAttribute('href', url);
   }
-
   function updateFavicon() {
     if (!loaderDone) return setFavicon('loading');
     if (menuOpen)    return setFavicon('paused');
@@ -371,25 +389,15 @@
     soundBtn.title = muted ? 'Turn sound on (M)' : 'Turn sound off (M)';
     updateFavicon();
   }
-
-  // The clip is visuals only; YouTube supplies the audio (unless it failed).
   function applySound() {
-    const useYouTube = ytReady && !ytFailed;
-    if (useYouTube) {
-      video.muted = true;
-      try { muted ? ytPlayer.mute() : ytPlayer.unMute(); } catch (e) {}
-    } else {
-      video.muted = muted;
-    }
+    if (!ytReady || ytFailed) return;
+    try { muted ? player.mute() : player.unMute(); } catch (e) {}
     updateSoundUI();
   }
-
   function ensureAudible() {
     if (muted) return;
-    if (ytReady && !ytFailed) { try { ytPlayer.unMute(); } catch (e) {} }
-    else { video.muted = false; }
+    if (ytReady && !ytFailed) { try { player.unMute(); } catch (e) {} }
   }
-
   function toggleSound() {
     muted = !muted;
     applySound();
@@ -399,54 +407,44 @@
   $('wiz-sound-btn').addEventListener('click', function (e) { e.stopPropagation(); toggleSound(); });
   updateSoundUI();
 
+  /* ======================= Cover the viewport with the 16:9 player ======================= */
+  function sizeStage() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const ratio = 16 / 9;
+    let width, height;
+    if (w / h > ratio) { width = w; height = w / ratio; }
+    else               { height = h; width = h * ratio; }
+
+    // Oversize so YouTube's titlebar / share / controls sit off‑screen.
+    const crop = 1.30;
+    width  *= crop;
+    height *= crop;
+
+    ytwrap.style.width  = width  + 'px';
+    ytwrap.style.height = height + 'px';
+  }
+  sizeStage();
+  window.addEventListener('resize', sizeStage);
+  window.addEventListener('orientationchange', sizeStage);
+
   /* ======================= Loader ======================= */
   function setProgress(pct) {
     fill.style.width = pct + '%';
     statusEl.textContent = 'Loading video… ' + pct + '%';
   }
-
-  function bufferedPercent() {
-    if (!video.duration || !video.buffered.length) return 0;
-    const end = video.buffered.end(video.buffered.length - 1);
-    return Math.min(100, Math.round((end / video.duration) * 100));
-  }
-
   function hideLoader(msg) {
     if (loaderDone) return;
     loaderDone = true;
     fill.style.width = '100%';
     statusEl.textContent = msg || 'Ready';
-    setTimeout(function () { loader.classList.add('hide'); }, msg ? 1600 : 300);
+    setTimeout(function () { loader.classList.add('hide'); }, msg ? 1800 : 300);
     updateFavicon();
-
-    setTimeout(function () {
-      openWizard();                      // show the notice once
-    }, 700);
+    setTimeout(openWizard, 700);
   }
+  setTimeout(function () { hideLoader(); }, 30000);   // safety net
 
-  video.addEventListener('progress', function () { if (!loaderDone) setProgress(bufferedPercent()); });
-
-  video.addEventListener('playing', function () {
-    hideLoader();
-    startBackgroundAudio();              // boot the hidden YouTube engine once
-  });
-
-  video.addEventListener('error', function () {
-    hideLoader('Could not load gtaviload1.mp4 — check that it sits next to this page.');
-    startBackgroundAudio();
-  });
-
-  setTimeout(function () { hideLoader(); }, 30000);   // never hang on the loader
-
-  /* ======================= Local clip (visuals only) ======================= */
-  function startLocal() {
-    video.muted = true;                  // always muted: sound comes from YouTube
-    const p = video.play();
-    if (p && p.catch) p.catch(function () { /* ignored, retried on first tap */ });
-  }
-  startLocal();
-
-  /* ======================= YouTube (hidden, audio only) ======================= */
+  /* ======================= YouTube engine ======================= */
   function loadYouTubeAPI(cb) {
     if (window.YT && window.YT.Player) return cb();
     if (!window.__ytCbs) {
@@ -464,51 +462,57 @@
     window.__ytCbs.push(cb);
   }
 
-  function startBackgroundAudio() {
-    if (ytStarting || ytFailed) return;
-    ytStarting = true;
-
+  function startYouTube() {
+    if (player || ytFailed) return;
     loadYouTubeAPI(function () {
-      ytPlayer = new YT.Player('yt', {
-        width: 320,
-        height: 180,
+      player = new YT.Player('yt', {
+        width: '100%',
+        height: '100%',
         videoId: YT_ID,
         host: 'https://www.youtube-nocookie.com',
         playerVars: {
-          autoplay: 1, mute: 1, controls: 0, modestbranding: 1, rel: 0,
-          playsinline: 1, fs: 0, disablekb: 1, iv_load_policy: 3,
-          loop: 1, playlist: YT_ID
+          autoplay: 1,
+          mute: 1,             // required for autoplay
+          controls: 0,         // ← no player buttons
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+          iv_load_policy: 3,
+          playsinline: 1,
+          loop: 1,
+          playlist: YT_ID,
+          enablejsapi: 1,
+          origin: location.origin
         },
         events: {
           onReady: function (e) {
             ytReady = true;
-            e.target.mute();             // start silent…
-            e.target.playVideo();        // …and unmute on the next user tap if wanted
+            try { e.target.mute(); } catch (err) {}
+            try { e.target.playVideo(); } catch (err) {}
             applySound();
+            setProgress(60);
           },
           onStateChange: function (e) {
-            if (e.data === YT.PlayerState.PLAYING && menuOpen) e.target.pauseVideo();
-            if (e.data === YT.PlayerState.ENDED) e.target.playVideo();
+            if (e.data === YT.PlayerState.PLAYING) {
+              ytPlaying = true;
+              setProgress(100);
+              hideLoader();
+            }
+            if (e.data === YT.PlayerState.ENDED) {
+              try { e.target.seekTo(0); e.target.playVideo(); } catch (err) {}
+            }
           },
           onError: function () {
             ytFailed = true;
-            applySound();                // fall back to the clip's own audio
-            toast('Background audio unavailable');
+            hideLoader('Background video unavailable — check the video ID or embedding permissions.');
           }
         }
       });
     });
   }
-
-  /* ======================= Pause / resume ======================= */
-  function pauseAll() {
-    video.pause();
-    if (ytReady && !ytFailed) { try { ytPlayer.pauseVideo(); } catch (e) {} }
-  }
-  function resumeAll() {
-    video.play().catch(function () {});
-    if (ytReady && !ytFailed && !menuOpen) { try { ytPlayer.playVideo(); } catch (e) {} }
-  }
+  startYouTube();
 
   /* ======================= Menu ======================= */
   function renderMenu() {
@@ -516,37 +520,31 @@
       return '<li data-i="' + i + '" class="' + (i === sel ? 'sel' : '') + '">' + t + '</li>';
     }).join('');
   }
-
   function openMenu() {
     if (menuOpen) return;
     menuOpen = true;
     menu.classList.remove('hidden');
     stage.classList.add('blur');
-    pauseAll();
+    // Keep the YouTube video playing (no pause) so its UI stays hidden.
     updateFavicon();
   }
-
   function closeMenu() {
     if (!menuOpen) return;
     menuOpen = false;
     menu.classList.add('hidden');
     stage.classList.remove('blur');
     updateFavicon();
-    resumeAll();
   }
-
   function moveSel(step) {
     sel = (sel + step + MENU_ITEMS.length) % MENU_ITEMS.length;
     renderMenu();
   }
-
   function activateSel() {
     const name = MENU_ITEMS[sel];
     if (name === 'Resume') { closeMenu(); return; }
     if (name === 'Help')   { closeMenu(); openWizard(); return; }
     toast(name + ' — coming soon');
   }
-
   itemsEl.addEventListener('click', function (e) {
     const li = e.target.closest('li');
     if (!li) return;
@@ -566,13 +564,13 @@
       e.preventDefault();
       goFullscreen();
       openMenu();
-      lastTap = 0;                // reset after a successful double‑tap
+      lastTap = 0;
     } else {
       lastTap = now;
     }
   });
 
-  /* ======================= Fullscreen + unlock audio ======================= */
+  /* ======================= Fullscreen + first‑tap helpers ======================= */
   function goFullscreen() {
     const el = document.documentElement;
     if (document.fullscreenElement || document.webkitFullscreenElement) return;
@@ -583,12 +581,12 @@
       if (r && r.catch) r.catch(function () {});
     } catch (e) {}
   }
-
   document.addEventListener('pointerdown', function () {
     goFullscreen();
     ensureAudible();
-    if (!loaderDone) return;
-    if (!menuOpen && video.paused) video.play().catch(function () {});
+    if (!ytPlaying && ytReady && !ytFailed) {
+      try { player.playVideo(); } catch (e) {}
+    }
   }, { capture: true });
 
   /* ======================= Input: pad + keyboard ======================= */
@@ -601,9 +599,8 @@
     'l': 'y', 'L': 'y', 'i': 'x', 'I': 'x',
     'Enter': 'start', 'Shift': 'select'
   };
-
   function handleAction(action) {
-    if (!wizard.classList.contains('closed')) {          // notice is modal
+    if (!wizard.classList.contains('closed')) {
       if (action === 'a' || action === 'b' || action === 'start') closeWizard();
       return;
     }
@@ -617,13 +614,11 @@
     if (action === 'start') { openMenu(); return; }
     onPress(action);
   }
-
-  function onPress(action)   { console.log('press', action); }    // ← your handler
-  function onRelease(action) { console.log('release', action); }  // ← your handler
+  function onPress(action)   { console.log('press', action); }
+  function onRelease(action) { console.log('release', action); }
 
   document.querySelectorAll('#pad .btn').forEach(function (btn) {
     const action = btn.dataset.action;
-
     btn.addEventListener('pointerdown', function (e) {
       e.preventDefault();
       goFullscreen();
@@ -631,7 +626,6 @@
       btn.classList.add('active');
       handleAction(action);
     });
-
     function release() {
       if (!btn.classList.contains('active')) return;
       btn.classList.remove('active');
@@ -661,7 +655,6 @@
     if (el) el.classList.add('active');
     handleAction(action);
   });
-
   document.addEventListener('keyup', function (e) {
     const action = KEYMAP[e.key];
     if (!action) return;
