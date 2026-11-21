@@ -10,9 +10,9 @@
 <link rel="preconnect" href="https://www.youtube-nocookie.com">
 <link rel="preconnect" href="https://www.youtube.com">
 
-<!-- Favicon (inline SVG, swapped by JS) -->
+<!-- Single sound-icon favicon (static, never swapped) -->
 <link id="favicon" rel="icon" type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='5'%20fill='%23000'/%3E%3Ccircle%20cx='12'%20cy='12'%20r='4'%20fill='%23fff'/%3E%3C/svg%3E">
+      href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='5'%20fill='%23000'/%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolygon%20points='11%205%206%209%202%209%202%2015%206%2015%2011%2019%2011%205'%20fill='%23fff'%20stroke='none'/%3E%3Cpath%20d='M15.5%208.5a5%205%200%200%201%200%207'/%3E%3Cpath%20d='M18.5%205.9a9%209%200%200%201%200%2012.2'/%3E%3C/g%3E%3C/svg%3E">
 
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -159,7 +159,7 @@
   }
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-  /* ---------- On-screen gamepad ---------- */
+  /* ---------- On-screen gamepad (pointer-only; no keyboard) ---------- */
   #pad {
     position: fixed; left: 0; right: 0; bottom: 16px; z-index: 10;
     display: flex; justify-content: space-between; align-items: center;
@@ -235,14 +235,14 @@
       <button id="menu-close" class="menu-close" aria-label="Close menu">✕</button>
       <img class="menu-logo" src="https://files.catbox.moe/dfjd81.png" alt="Menu">
       <ul id="items"></ul>
-      <div class="hint">↵ / A select &nbsp;·&nbsp; Esc / B back</div>
+      <div class="hint">Tap or click an item to select</div>
     </div>
   </div>
 
   <!-- Notice window with sound & close controls -->
   <div id="wizard" class="closed" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
     <div class="titlebar">
-      <button id="wiz-sound-btn" class="icon-btn" aria-label="Toggle sound" title="Toggle sound (M)">
+      <button id="wiz-sound-btn" class="icon-btn" aria-label="Toggle sound" title="Toggle sound">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
           <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -254,7 +254,7 @@
     </div>
     <div class="wizard-body">
       <p>Edit this message here. It appears in the notice window.<br>
-         Sound: 🔊 top-right (or press <b>M</b>). Menu: <b>double‑tap</b> the screen, <b>Enter</b> or <b>START</b>.</p>
+         Sound: 🔊 top-right. Menu: <b>double‑tap</b> the screen or press <b>START</b>.</p>
     </div>
     <div class="wizard-footer">
       <button id="ok-btn">OK</button>
@@ -262,7 +262,7 @@
   </div>
 
   <!-- Global sound button -->
-  <button id="sound-btn" aria-label="Sound off" title="Toggle sound (M)">
+  <button id="sound-btn" aria-label="Sound off" title="Toggle sound">
     <svg id="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden>
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
       <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -302,9 +302,10 @@
   'use strict';
 
   /* ======================= Config ======================= */
-  const YT_ID = 'ARwju5Gyk64';           // 47‑minute video, embedded directly
+  const YT_ID = 'ARwju5Gyk64';           // 47-minute video, embedded directly
   const MENU_ITEMS = ['Resume', 'Gallery', 'Store', 'Help', 'Options'];
   const DOUBLE_TAP_MS = 300;
+  const SAVE_INTERVAL_MS = 5000;         // persist watch time every 5 s
 
   /* ======================= Refs ======================= */
   const $ = (id) => document.getElementById(id);
@@ -316,7 +317,6 @@
   const soundBtn  = $('sound-btn');
   const iconOn    = $('icon-on');
   const iconOff   = $('icon-off');
-  const favicon   = $('favicon');
   const wizard    = $('wizard');
   const menu      = $('menu');
   const itemsEl   = $('items');
@@ -332,33 +332,88 @@
   let sel        = 0;
   let loaderDone = false;
   let hintShown  = false;
+  let saveTimer  = null;
+  let resumeFrom = 0;             // seconds, restored from IndexedDB
 
-  /* ======================= Favicons ======================= */
-  const SPEAKER = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#fff" stroke="none"/>';
-  function wrapSvg(inner) {
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' +
-             '<rect width="24" height="24" rx="5" fill="#000"/>' +
-             '<g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-               inner +
-             '</g>' +
-           '</svg>';
+  /* ======================= IndexedDB (watch metadata) ======================= */
+  const DB_NAME    = 'VideoWatchDB';
+  const DB_VERSION = 1;
+  const STORE      = 'progress';
+  let dbPromise    = null;
+
+  function openDB() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise(function (resolve, reject) {
+      if (!('indexedDB' in window)) { reject(new Error('IndexedDB unsupported')); return; }
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function (e) {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = function (e) { resolve(e.target.result); };
+      req.onerror   = function (e) { reject(e.target.error); };
+    });
+    return dbPromise;
   }
-  const ICONS = {
-    loading: wrapSvg('<circle cx="12" cy="12" r="7" stroke-opacity=".3"/><path d="M19 12a7 7 0 0 0-7-7"/>'),
-    on:      wrapSvg(SPEAKER + '<path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.9a9 9 0 0 1 0 12.2"/>'),
-    off:     wrapSvg(SPEAKER + '<line x1="16" y1="9" x2="22" y2="15"/><line x1="22" y1="9" x2="16" y2="15"/>'),
-    paused:  wrapSvg('<rect x="7" y="5" width="4" height="14" rx="1" fill="#fff" stroke="none"/>' +
-                     '<rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" stroke="none"/>')
-  };
-  function setFavicon(name) {
-    const url = 'data:image/svg+xml,' + encodeURIComponent(ICONS[name] || ICONS.loading);
-    if (favicon.getAttribute('href') !== url) favicon.setAttribute('href', url);
+
+  function saveProgress(time) {
+    if (!Number.isFinite(time) || time < 0) return;
+    openDB().then(function (db) {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put({
+        id: YT_ID,
+        time: time,
+        updated: Date.now()
+      });
+    }).catch(function () {});
   }
-  function updateFavicon() {
-    if (!loaderDone) return setFavicon('loading');
-    if (menuOpen)    return setFavicon('paused');
-    setFavicon(muted ? 'off' : 'on');
+
+  function loadProgress() {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve) {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(YT_ID);
+        req.onsuccess = function () { resolve(req.result || null); };
+        req.onerror   = function () { resolve(null); };
+      });
+    }).catch(function () { return null; });
   }
+
+  // Restore the saved time as soon as the player is ready
+  loadProgress().then(function (rec) {
+    if (rec && Number.isFinite(rec.time) && rec.time > 2) {
+      resumeFrom = rec.time;
+    }
+  });
+
+  function startSaveLoop() {
+    if (saveTimer) return;
+    saveTimer = setInterval(function () {
+      if (!ytReady || ytFailed || !player) return;
+      try {
+        const t = player.getCurrentTime();
+        if (Number.isFinite(t) && t > 0) saveProgress(t);
+      } catch (e) {}
+    }, SAVE_INTERVAL_MS);
+  }
+
+  // Extra safety: save when the tab is hidden or closed
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden || !ytReady || ytFailed || !player) return;
+    try {
+      const t = player.getCurrentTime();
+      if (Number.isFinite(t) && t > 0) saveProgress(t);
+    } catch (e) {}
+  });
+  window.addEventListener('pagehide', function () {
+    if (!ytReady || ytFailed || !player) return;
+    try {
+      const t = player.getCurrentTime();
+      if (Number.isFinite(t) && t > 0) saveProgress(t);
+    } catch (e) {}
+  });
 
   /* ======================= Toast ======================= */
   let toastTimer = null;
@@ -386,8 +441,8 @@
     iconOn.hidden  = muted;
     iconOff.hidden = !muted;
     soundBtn.setAttribute('aria-label', muted ? 'Sound off' : 'Sound on');
-    soundBtn.title = muted ? 'Turn sound on (M)' : 'Turn sound off (M)';
-    updateFavicon();
+    soundBtn.title = muted ? 'Turn sound on' : 'Turn sound off';
+    // Favicon stays as a single static sound icon — never swapped.
   }
   function applySound() {
     if (!ytReady || ytFailed) return;
@@ -416,7 +471,7 @@
     if (w / h > ratio) { width = w; height = w / ratio; }
     else               { height = h; width = h * ratio; }
 
-    // Oversize so YouTube's titlebar / share / controls sit off‑screen.
+    // Oversize so YouTube's titlebar / share / controls sit off-screen.
     const crop = 1.30;
     width  *= crop;
     height *= crop;
@@ -439,7 +494,6 @@
     fill.style.width = '100%';
     statusEl.textContent = msg || 'Ready';
     setTimeout(function () { loader.classList.add('hide'); }, msg ? 1800 : 300);
-    updateFavicon();
     setTimeout(openWizard, 700);
   }
   setTimeout(function () { hideLoader(); }, 30000);   // safety net
@@ -473,7 +527,7 @@
         playerVars: {
           autoplay: 1,
           mute: 1,             // required for autoplay
-          controls: 0,         // ← no player buttons
+          controls: 0,         // no player buttons
           disablekb: 1,
           fs: 0,
           modestbranding: 1,
@@ -490,9 +544,17 @@
           onReady: function (e) {
             ytReady = true;
             try { e.target.mute(); } catch (err) {}
+            // Restore watch position (if we have one)
+            if (resumeFrom > 0) {
+              try {
+                e.target.seekTo(resumeFrom, true);
+                toast('Resumed from ' + formatTime(resumeFrom), 3200);
+              } catch (err) {}
+            }
             try { e.target.playVideo(); } catch (err) {}
             applySound();
             setProgress(60);
+            startSaveLoop();
           },
           onStateChange: function (e) {
             if (e.data === YT.PlayerState.PLAYING) {
@@ -500,7 +562,15 @@
               setProgress(100);
               hideLoader();
             }
+            if (e.data === YT.PlayerState.PAUSED) {
+              try {
+                const t = e.target.getCurrentTime();
+                if (Number.isFinite(t) && t > 0) saveProgress(t);
+              } catch (err) {}
+            }
             if (e.data === YT.PlayerState.ENDED) {
+              // The video finished — reset saved position so it starts fresh
+              saveProgress(0);
               try { e.target.seekTo(0); e.target.playVideo(); } catch (err) {}
             }
           },
@@ -514,6 +584,14 @@
   }
   startYouTube();
 
+  function formatTime(sec) {
+    sec = Math.floor(sec);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+  }
+
   /* ======================= Menu ======================= */
   function renderMenu() {
     itemsEl.innerHTML = MENU_ITEMS.map(function (t, i) {
@@ -526,14 +604,14 @@
     menu.classList.remove('hidden');
     stage.classList.add('blur');
     // Keep the YouTube video playing (no pause) so its UI stays hidden.
-    updateFavicon();
+    updateSoundUI();
   }
   function closeMenu() {
     if (!menuOpen) return;
     menuOpen = false;
     menu.classList.add('hidden');
     stage.classList.remove('blur');
-    updateFavicon();
+    updateSoundUI();
   }
   function moveSel(step) {
     sel = (sel + step + MENU_ITEMS.length) % MENU_ITEMS.length;
@@ -589,16 +667,7 @@
     }
   }, { capture: true });
 
-  /* ======================= Input: pad + keyboard ======================= */
-  const KEYMAP = {
-    'ArrowUp': 'up', 'w': 'up', 'W': 'up',
-    'ArrowDown': 'down', 's': 'down', 'S': 'down',
-    'ArrowLeft': 'left', 'a': 'left', 'A': 'left',
-    'ArrowRight': 'right', 'd': 'right', 'D': 'right',
-    'j': 'a', 'J': 'a', 'k': 'b', 'K': 'b',
-    'l': 'y', 'L': 'y', 'i': 'x', 'I': 'x',
-    'Enter': 'start', 'Shift': 'select'
-  };
+  /* ======================= On-screen gamepad (pointer only) ======================= */
   function handleAction(action) {
     if (!wizard.classList.contains('closed')) {
       if (action === 'a' || action === 'b' || action === 'start') closeWizard();
@@ -636,36 +705,12 @@
     btn.addEventListener('pointercancel', release);
   });
 
-  const pressed = new Set();
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'm' || e.key === 'M') { e.preventDefault(); toggleSound(); return; }
-    if (e.key === 'Escape') {
-      if (!wizard.classList.contains('closed')) closeWizard();
-      else closeMenu();
-      return;
-    }
-    const action = KEYMAP[e.key];
-    if (!action) return;
-    e.preventDefault();
-    goFullscreen();
-    ensureAudible();
-    if (pressed.has(action)) return;
-    pressed.add(action);
-    const el = document.querySelector('#pad [data-action="' + action + '"]');
-    if (el) el.classList.add('active');
-    handleAction(action);
-  });
-  document.addEventListener('keyup', function (e) {
-    const action = KEYMAP[e.key];
-    if (!action) return;
-    pressed.delete(action);
-    const el = document.querySelector('#pad [data-action="' + action + '"]');
-    if (el) el.classList.remove('active');
-    if (!menuOpen) onRelease(action);
-  });
+  /* ======================= Keyboard: disabled ======================= */
+  // All controller / keyboard shortcuts (arrows, WASD, Enter, Shift, M, Esc)
+  // have been intentionally removed. Input is handled only via pointer/touch.
 
   /* ======================= Boot ======================= */
-  setFavicon('loading');
+  // (Favicon is a single static sound icon — nothing to swap.)
 })();
 </script>
 </body>
