@@ -109,6 +109,48 @@
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   .connect-text { font-size: 16px; color: #333; font-weight: bold; }
 
+  /* ================= ROTATE PAGE (NEW) ================= */
+  #rotate-page {
+    background: #000;
+    display: none; align-items: center; justify-content: center;
+    z-index: 45;
+  }
+  #rotate-page.active { display: flex; }
+  .rotate-content {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 20px; color: #fff; padding: 20px;
+  }
+  .rotate-phone {
+    width: 62px; height: 108px;
+    border: 3px solid #fff; border-radius: 12px;
+    position: relative;
+    animation: rotate-phone-anim 2.4s ease-in-out infinite;
+  }
+  .rotate-phone::after {
+    content: "";
+    position: absolute; bottom: 9px; left: 50%; transform: translateX(-50%);
+    width: 20px; height: 3px; border-radius: 2px; background: #fff; opacity: 0.8;
+  }
+  .rotate-phone-screen {
+    position: absolute; inset: 6px;
+    background: rgba(255,255,255,0.12); border-radius: 6px;
+  }
+  @keyframes rotate-phone-anim {
+    0%, 20%   { transform: rotate(0deg); }
+    60%, 80%  { transform: rotate(-90deg); }
+    100%      { transform: rotate(0deg); }
+  }
+  .rotate-content h2 { font-size: 1.5rem; margin: 0; font-weight: 600; letter-spacing: 0.02em; }
+  .rotate-content p { font-size: 0.95rem; color: #999; margin: 0; }
+  #rotate-skip {
+    margin-top: 8px;
+    background: transparent; color: #fff;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 8px 22px; font-size: 13px; cursor: pointer;
+    border-radius: 999px;
+  }
+  #rotate-skip:hover { background: rgba(255,255,255,0.1); }
+
   /* ================= 3RD: LOADING SEQUENCE ================= */
   #loading-seq-page { background: #000; z-index: 40; }
   .vid-layer {
@@ -116,6 +158,39 @@
     object-fit: cover; z-index: 1; opacity: 0; transition: opacity 0.5s ease;
   }
   .vid-layer.active { opacity: 1; }
+
+  /* YouTube-style "Fetching assets" loader (NEW) */
+  #black-loader {
+    position: absolute; inset: 0;
+    background: #000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    z-index: 30;
+  }
+  #black-loader.show { display: flex; }
+  .yt-spinner {
+    width: 48px; height: 48px;
+    position: relative;
+  }
+  .yt-spinner::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #ff0000;
+    animation: yt-spin 0.85s linear infinite;
+  }
+  @keyframes yt-spin { to { transform: rotate(360deg); } }
+  .yt-loader-text {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+  }
 
   /* ================= 4TH: MAIN APP ================= */
   #main-app { 
@@ -307,10 +382,28 @@
   </div>
 </div>
 
+<!-- ROTATE PAGE (NEW) -->
+<div id="rotate-page" class="page">
+  <div class="rotate-content">
+    <div class="rotate-phone">
+      <div class="rotate-phone-screen"></div>
+    </div>
+    <h2>Rotate your device</h2>
+    <p>Turn your phone sideways to continue</p>
+    <button id="rotate-skip" class="btn-blue">Continue</button>
+  </div>
+</div>
+
 <!-- LOADING SEQUENCE PAGE -->
 <div id="loading-seq-page" class="page">
   <video id="vid-phase1" class="vid-layer" src="https://res.cloudinary.com/ccmt3psw/video/upload/vidssave.com_GTA_6_-_FULL_Loading_Screen_INTRO_Grand_Theft_Auto_VI_1080P_lj0kdo.mp4" playsinline muted></video>
   <video id="vid-phase2" class="vid-layer" src="gtaviload1.mp4" playsinline muted></video>
+
+  <!-- YouTube-style "Fetching assets" loader (NEW) -->
+  <div id="black-loader">
+    <div class="yt-spinner"></div>
+    <div class="yt-loader-text">Fetching assets...</div>
+  </div>
 </div>
 
 <!-- MAIN APP -->
@@ -429,6 +522,7 @@
   /* ================= PAGE FLOW 1: WIZARD -> SETUP ================= */
   const wizardModal = document.getElementById('wizard-modal');
   const setupPage = document.getElementById('setup-page');
+  const rotatePage = document.getElementById('rotate-page');
   const loadingSeqPage = document.getElementById('loading-seq-page');
   const mainApp = document.getElementById('main-app');
 
@@ -453,14 +547,50 @@
 
   document.getElementById('btn-save-play').addEventListener('click', () => {
     setupPage.classList.remove('active');
-    loadingSeqPage.classList.add('active');
     requestFullscreen();
-    playLoadingSequence();
+    showRotatePage();
   });
+
+  /* ================= ROTATE PAGE LOGIC (NEW) ================= */
+  function showRotatePage() {
+    rotatePage.classList.add('active');
+
+    let handled = false;
+
+    function proceed() {
+      if (handled) return;
+      handled = true;
+      rotatePage.classList.remove('active');
+      loadingSeqPage.classList.add('active');
+      playLoadingSequence();
+      window.removeEventListener('orientationchange', checkOrientation);
+      window.removeEventListener('resize', checkOrientation);
+    }
+
+    function checkOrientation() {
+      // Landscape or desktop → proceed
+      if (window.innerWidth > window.innerHeight || !isMobile) {
+        proceed();
+      }
+    }
+
+    // If already landscape or on desktop, auto-proceed after a short beat
+    if (window.innerWidth > window.innerHeight || !isMobile) {
+      setTimeout(proceed, 1200);
+    } else {
+      // Portrait mobile → wait for rotation
+      window.addEventListener('orientationchange', checkOrientation);
+      window.addEventListener('resize', checkOrientation);
+    }
+
+    // Skip button always works
+    document.getElementById('rotate-skip').onclick = proceed;
+  }
 
   /* ================= LOADING SEQUENCE LOGIC ================= */
   const vid1 = document.getElementById('vid-phase1');
   const vid2 = document.getElementById('vid-phase2');
+  const blackLoader = document.getElementById('black-loader');
 
   function playLoadingSequence() {
     // Phase 1: Play Cloudinary Video
@@ -485,18 +615,22 @@
         vid2.pause();
         vid2.muted = true;
         vid2.classList.remove('active');
-        
-        // 2. Preload YouTube in the background while screen is black
+
+        // 2. Show YouTube-style "Fetching assets" loader over the black screen
+        blackLoader.classList.add('show');
+
+        // 3. Preload YouTube in the background while screen is black
         mainApp.style.display = 'block'; // Renderable
         mainApp.style.opacity = '0';     // Invisible
         initMainApp();
 
-        // 3. Wait 6 seconds of black screen, then fade in the Main App
+        // 4. Wait 10 seconds of black screen with loader, then fade in the Main App
         setTimeout(() => {
+          blackLoader.classList.remove('show');
           mainApp.style.opacity = '1';
           loadingSeqPage.classList.remove('active');
           loadingSeqPage.style.display = 'none'; // Fully remove
-        }, 6000); // <--- 6 Seconds black screen
+        }, 10000); // <--- 10 Seconds black screen (was 6000)
 
       }, 6000);
     };
@@ -777,4 +911,3 @@
 </script>
 </body>
 </html>
-
