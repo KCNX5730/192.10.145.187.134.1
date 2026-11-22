@@ -477,20 +477,22 @@
 
       // Play vid2 for exactly 6 seconds
       setTimeout(() => {
-        // Hide vid2 (reveals the black background)
+        // 1. STOP THE AUDIO/VIDEO completely before going black
+        vid2.pause();
+        vid2.muted = true;
         vid2.classList.remove('active');
         
-        // Preload YouTube in the background while we wait 4 seconds on black screen
-        mainApp.style.display = 'block'; // Make it renderable
-        mainApp.style.opacity = '0';     // Keep it invisible
+        // 2. Preload YouTube in the background while screen is black
+        mainApp.style.display = 'block'; // Renderable
+        mainApp.style.opacity = '0';     // Invisible
         initMainApp();
 
-        // After 4 seconds of black screen, fade in the main app
+        // 3. Wait 6 seconds of black screen, then fade in the Main App
         setTimeout(() => {
           mainApp.style.opacity = '1';
           loadingSeqPage.classList.remove('active');
-          loadingSeqPage.style.display = 'none'; // fully remove
-        }, 4000);
+          loadingSeqPage.style.display = 'none'; // Fully remove
+        }, 6000); // <--- 6 Seconds black screen
 
       }, 6000);
     };
@@ -627,7 +629,7 @@
           onReady: (e) => {
             ytReady = true;
             if (isMuted) e.target.mute();
-            else e.target.unMute(); // Try to unmute immediately
+            else e.target.unMute(); 
             
             if (resumeFrom > 0) {
               try {
