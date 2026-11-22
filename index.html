@@ -4,173 +4,136 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<meta name="color-scheme" content="dark">
-<title>Video</title>
-
-<link rel="preconnect" href="https://www.youtube-nocookie.com">
-<link rel="preconnect" href="https://www.youtube.com">
-
-<!-- Single sound-icon favicon (static, never swapped) -->
-<link id="favicon" rel="icon" type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='5'%20fill='%23000'/%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolygon%20points='11%205%206%209%202%209%202%2015%206%2015%2011%2019%2011%205'%20fill='%23fff'%20stroke='none'/%3E%3Cpath%20d='M15.5%208.5a5%205%200%200%201%200%207'/%3E%3Cpath%20d='M18.5%205.9a9%209%200%200%201%200%2012.2'/%3E%3C/g%3E%3C/svg%3E">
+<title>GTA VI Fan Setup</title>
 
 <style>
+  /* ================= RESET & GLOBAL ================= */
   *, *::before, *::after { box-sizing: border-box; }
-
   html, body {
-    margin: 0; padding: 0; height: 100%;
+    margin: 0; padding: 0; height: 100%; width: 100%;
     background: #000; overflow: hidden;
-    font-family: "Segoe UI", "Microsoft Sans Serif", Tahoma, Arial, sans-serif;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
 
-  /* ---------- Background stage (YouTube video only) ---------- */
-  #stage {
-    position: fixed; inset: 0; z-index: 1;
-    overflow: hidden; background: #000;
-    transition: filter .45s ease;
-  }
-  #stage.blur { filter: blur(14px) brightness(.5); }
+  /* ================= PAGE MANAGEMENT ================= */
+  .page { position: fixed; inset: 0; display: none; }
+  .page.active { display: block; }
 
-  #ytwrap {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    /* size is set by JS to cover the viewport and crop YouTube UI */
-  }
-  #yt {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-  }
-  #yt iframe {
-    position: absolute; inset: 0;
-    width: 100% !important; height: 100% !important;
-    border: 0; pointer-events: none;
-  }
-
-  /* ---------- Transparent tap catcher ---------- */
-  #catch {
-    position: fixed; inset: 0; z-index: 5;
-    background: transparent;
-    touch-action: manipulation;
-  }
-
-  /* ---------- Loader ---------- */
-  #loader {
-    position: fixed; inset: 0; z-index: 20; background: #000;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    transition: opacity .6s ease;
-  }
-  #loader.hide { opacity: 0; pointer-events: none; }
-  #track {
-    width: min(80vw, 480px); height: 8px;
-    background: rgba(255,255,255,.15);
-    border-radius: 4px; overflow: hidden;
-  }
-  #fill { width: 0%; height: 100%; background: #fff; transition: width .3s ease; }
-  #status {
-    margin-top: 12px; color: #ccc; font-size: 14px; letter-spacing: .3px;
-    text-align: center; padding: 0 20px;
-  }
-
-  /* ---------- Game menu ---------- */
-  #menu { position: fixed; inset: 0; z-index: 35; background: rgba(0,0,0,.25); }
-  #menu.hidden { display: none; }
-  .panel {
-    position: absolute; top: 0; left: 0; bottom: 0;
-    width: min(84vw, 340px); padding: 36px 20px 18px;
-    background: rgba(28,28,36,.95);
-    display: flex; flex-direction: column;
-    box-shadow: 2px 0 24px rgba(0,0,0,.6);
-  }
-  .menu-logo {
-    display: block; width: 120px; height: auto;
-    margin: 0 0 24px 12px;
-    image-rendering: -webkit-optimize-contrast;
-  }
-  #items { list-style: none; margin: 0; padding: 0; flex: 1 1 auto; overflow-y: auto; }
-  #items li {
-    padding: 13px 16px; margin-bottom: 6px; color: #ddd; font-size: 16px;
-    cursor: pointer; border-radius: 3px;
-    transition: background .15s, color .15s;
-  }
-  #items li:hover { background: rgba(255,255,255,.10); }
-  #items li.sel { background: linear-gradient(90deg, #fff, #b5b5b5); color: #000; }
-  .hint { color: rgba(255,255,255,.6); font-size: 12px; letter-spacing: .5px; padding: 14px 12px 0; }
-  .menu-close {
-    position: absolute; top: 12px; right: 12px;
-    width: 38px; height: 38px; padding: 0;
-    border: 0; border-radius: 6px; background: transparent;
-    color: #ddd; font-size: 18px; line-height: 1; cursor: pointer;
-  }
-  .menu-close:hover { background: rgba(255,255,255,.12); color: #fff; }
-
-  /* ---------- Notice window ---------- */
-  #wizard {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    z-index: 40; width: min(92vw, 420px); background: #f0f0f0;
-    border: 1px solid #0078d7; box-shadow: 0 8px 30px rgba(0,0,0,.5); color: #000;
-  }
-  #wizard.closed { display: none; }
-  .titlebar {
-    display: flex; align-items: center; gap: 4px;
-    height: 32px; padding: 0 0 0 6px;
-    background: #0078d7; color: #fff; font-size: 12px;
-  }
-  .titlebar .title { flex: 1; margin-left: 4px; }
-  .icon-btn {
-    width: 30px; height: 30px; padding: 0;
-    border: 0; border-radius: 4px;
-    background: transparent; color: #fff;
-    cursor: pointer; font-family: inherit;
+  /* ================= 1ST: CONFIGURATION SITE ================= */
+  #setup-page {
+    background: #008080; /* Classic Windows teal */
     display: flex; align-items: center; justify-content: center;
-    transition: background .15s;
   }
-  .icon-btn:hover { background: rgba(255,255,255,.22); }
-  .icon-btn svg { width: 20px; height: 20px; }
-  .wizard-body { padding: 18px 16px 14px; font-size: 13px; line-height: 1.5; }
-  .wizard-body p { margin: 0; }
-  .wizard-footer { display: flex; justify-content: flex-end; padding: 10px 16px 14px; }
-  .wizard-footer button {
-    min-width: 84px; height: 26px; padding: 0 12px; border: 1px solid #adadad;
-    background: #e1e1e1; font-family: inherit; font-size: 12px; cursor: pointer; color: #000;
+  .setup-window {
+    width: 540px; max-width: 95vw; background: #d4d0c8;
+    border: 2px solid #fff; border-right-color: #404040; border-bottom-color: #404040;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
   }
-  .wizard-footer button:hover { background: #e5f1fb; border-color: #0078d7; }
+  .setup-titlebar {
+    background: linear-gradient(90deg, #000080, #1084d0);
+    color: #fff; padding: 6px 8px; font-size: 14px; font-weight: bold;
+    display: flex; align-items: center;
+    /* No close/minimize/maximize */
+  }
+  .setup-body {
+    padding: 20px; display: flex; flex-direction: column; gap: 15px;
+    color: #000; font-size: 13px;
+  }
+  .setup-row { display: flex; align-items: center; justify-content: space-between; }
+  .setup-row label { font-weight: bold; }
+  .setup-row select, .setup-row input {
+    padding: 4px; font-size: 13px; width: 200px;
+    background: #fff; border: 1px solid #808080; border-right-color: #fff; border-bottom-color: #fff;
+  }
+  .setup-footer {
+    padding: 10px 20px; display: flex; justify-content: flex-end; gap: 10px;
+    background: #d4d0c8; border-top: 1px solid #808080;
+  }
+  .btn-blue {
+    background: #0078d7; color: #fff; border: 1px solid #005a9e;
+    padding: 8px 24px; font-size: 14px; cursor: pointer;
+  }
+  .btn-blue:hover { background: #0063b1; }
 
-  /* ---------- Sound button ---------- */
+  /* Device Connection Animation (Half Page Popup) */
+  #connecting-overlay {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 50vh;
+    background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+    border-top-left-radius: 20px; border-top-right-radius: 20px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    transform: translateY(100%); transition: transform 0.4s ease;
+    z-index: 100;
+  }
+  #connecting-overlay.show { display: flex; transform: translateY(0); }
+  .connect-icon {
+    width: 60px; height: 60px; border-radius: 50%;
+    border: 4px solid #0078d7; border-top-color: transparent;
+    animation: spin 1s linear infinite; margin-bottom: 20px;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .connect-text { font-size: 16px; color: #333; font-weight: bold; }
+
+  /* ================= 2ND: LOADING PAGE ================= */
+  #loading-page {
+    background: #000;
+  }
+  #loading-video {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; z-index: 1;
+  }
+
+  /* ================= 3RD: MAIN APP ================= */
+  #main-app {
+    background: #000;
+  }
+  #yt-bg {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 130vw; height: 130vh; z-index: 1; border: 0; pointer-events: none;
+  }
+  /* Scale to cover and crop out YT UI */
+  @media (min-aspect-ratio: 16/9) { #yt-bg { width: 100vw; height: 56.25vw; } }
+  @media (max-aspect-ratio: 16/9) { #yt-bg { height: 100vh; width: 177.77vh; } }
+
+  #catch-layer { position: fixed; inset: 0; z-index: 5; background: transparent; }
+
+  /* Sound Button */
   #sound-btn {
     position: fixed; top: 12px; right: 12px; z-index: 30;
-    width: 44px; height: 44px; padding: 0; border: none; border-radius: 8px;
-    background: rgba(0,0,0,.6); color: #fff; cursor: pointer;
+    width: 44px; height: 44px; border: none; border-radius: 8px;
+    background: rgba(0,0,0,0.6); color: #fff; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     backdrop-filter: blur(4px);
   }
-  #sound-btn:hover { background: rgba(0,0,0,.85); }
   #sound-btn svg { width: 24px; height: 24px; }
 
-  /* ---------- Toast ---------- */
-  #toast {
-    position: fixed; left: 50%; bottom: 108px; transform: translate(-50%, 12px);
-    z-index: 45; max-width: 88vw; padding: 10px 18px; border-radius: 999px;
-    background: rgba(20,20,26,.94); color: #fff; font-size: 13px; letter-spacing: .3px;
-    border: 1px solid rgba(255,255,255,.16); text-align: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity .3s ease, transform .3s ease;
+  /* PC Instruction Tooltip (i-box) */
+  #pc-instruction {
+    position: fixed; top: 20%; right: 20px; z-index: 25;
+    background: rgba(0,0,0,0.8); color: #fff;
+    padding: 6px 10px; border-radius: 4px;
+    font-size: 8px; display: none; align-items: center; gap: 6px;
+    border: 1px solid rgba(255,255,255,0.3); pointer-events: none;
+    opacity: 0; transition: opacity 0.5s;
   }
-  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #pc-instruction .i-icon {
+    display: inline-block; width: 12px; height: 12px; line-height: 12px;
+    text-align: center; background: #0078d7; color: #fff;
+    border-radius: 50%; font-weight: bold; font-size: 8px;
+  }
 
-  /* ---------- On-screen gamepad (pointer-only; no keyboard) ---------- */
-  #pad {
+  /* Mobile Controller */
+  #gamepad {
     position: fixed; left: 0; right: 0; bottom: 16px; z-index: 10;
-    display: flex; justify-content: space-between; align-items: center;
+    display: none; justify-content: space-between; align-items: center;
     padding: 0 20px; pointer-events: none;
   }
-  .group { pointer-events: auto; }
+  .pad-group { pointer-events: auto; }
   .dpad, .face {
-    display: grid;
-    grid-template-columns: repeat(3, 50px);
-    grid-template-rows: repeat(3, 50px);
-    gap: 4px;
+    display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 4px;
   }
   #up    { grid-column: 2; grid-row: 1; }
   #left  { grid-column: 1; grid-row: 2; }
@@ -180,538 +143,431 @@
   #x { grid-column: 1; grid-row: 2; --c: #ff4136; }
   #b { grid-column: 3; grid-row: 2; --c: #0074d9; }
   #a { grid-column: 2; grid-row: 3; --c: #ffdc00; }
-  .btn {
-    width: 50px; height: 50px;
-    border: 2px solid var(--c, rgba(255,255,255,.7));
-    border-radius: 50%; background: rgba(0,0,0,.5); color: var(--c, #fff);
-    font-size: 18px; font-weight: bold; cursor: pointer;
-    touch-action: none; user-select: none; -webkit-user-select: none;
+  .pad-btn {
+    width: 50px; height: 50px; border: 2px solid var(--c, rgba(255,255,255,0.7));
+    border-radius: 50%; background: rgba(0,0,0,0.5); color: var(--c, #fff);
+    font-size: 18px; font-weight: bold; cursor: pointer; touch-action: none;
   }
-  .btn.pill {
-    border-radius: 25px; width: 70px; height: 30px;
-    font-size: 12px; border-color: rgba(255,255,255,.7);
-    color: #fff; --c: none;
+  .pad-btn.pill {
+    border-radius: 25px; width: 70px; height: 30px; font-size: 12px;
+    border-color: rgba(255,255,255,0.7); color: #fff; --c: none;
   }
-  .btn:active, .btn.active { background: var(--c, rgba(255,255,255,.35)); color: #000; }
-  .btn.pill:active, .btn.pill.active { background: rgba(255,255,255,.35); color: #fff; }
-  .center {
-    display: flex; flex-direction: column; gap: 8px;
-    align-self: center; pointer-events: auto;
-  }
+  .pad-btn:active, .pad-btn.active { background: var(--c, rgba(255,255,255,0.35)); color: #000; }
+  .pad-btn.pill:active, .pad-btn.pill.active { background: rgba(255,255,255,0.35); color: #fff; }
+  .pad-center { display: flex; flex-direction: column; gap: 8px; align-self: center; pointer-events: auto; }
 
-  /* ---------- Accessibility & responsive ---------- */
-  :focus-visible { outline: 2px solid #ff7aa8; outline-offset: 2px; }
-  @media (prefers-reduced-motion: reduce) {
-    * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  /* ================= WIZARD MODAL ================= */
+  #wizard-modal {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 50; width: 480px; max-width: 95vw;
+    background: #f0f0f0; border: 1px solid #0078d7;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.7); color: #000;
+    display: none; flex-direction: column;
   }
-  @media (max-width: 520px) {
-    .dpad, .face { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); }
-    .btn { width: 44px; height: 44px; font-size: 16px; }
-    .btn.pill { width: 62px; height: 28px; font-size: 11px; }
-    #toast { bottom: 128px; }
+  #wizard-modal.active { display: flex; }
+  .wiz-titlebar {
+    background: #0078d7; color: #fff; padding: 8px 12px;
+    font-size: 13px; font-weight: bold;
+  }
+  .wiz-body {
+    padding: 20px; font-size: 13px; line-height: 1.5; display: flex; flex-direction: column; gap: 15px;
+  }
+  .wiz-icons { display: flex; gap: 10px; justify-content: center; margin-bottom: 5px; }
+  .wiz-icons img, .wiz-icons svg { height: 24px; width: auto; }
+  .wiz-links {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+    margin-top: 10px;
+  }
+  .wiz-links-left { display: flex; flex-direction: column; gap: 8px; }
+  .wiz-links a {
+    color: #0078d7; text-decoration: none; font-weight: bold;
+  }
+  .wiz-links a:hover { text-decoration: underline; }
+  .wiz-footer {
+    padding: 12px; text-align: right; border-top: 1px solid #ccc;
+  }
+  .wiz-btn {
+    padding: 6px 24px; font-size: 13px; cursor: pointer;
+    background: #e1e1e1; border: 1px solid #adadad;
+  }
+  .wiz-btn:hover { background: #e5f1fb; border-color: #0078d7; }
+  .copyright {
+    font-size: 5px; color: #666; text-align: right; margin-top: 5px;
   }
 </style>
 </head>
 <body>
 
-  <!-- Stage: YouTube video fills this, UI cropped off-screen -->
-  <div id="stage">
-    <div id="ytwrap">
-      <div id="yt"></div>
+<!-- 1ST: CONFIGURATION SITE -->
+<div id="setup-page" class="page active">
+  <div class="setup-window">
+    <div class="setup-titlebar">Setup Page</div>
+    <div class="setup-body">
+      <div class="setup-row">
+        <label>Language:</label>
+        <select id="cfg-lang">
+          <option>English</option>
+          <option>Spanish</option>
+          <option>French</option>
+          <option>German</option>
+        </select>
+      </div>
+      <div class="setup-row">
+        <label>Aspect Ratio:</label>
+        <select id="cfg-aspect">
+          <option value="1920x1080" selected>1920*1080 (Default)</option>
+          <option value="1280x720">1280*720</option>
+          <option value="2560x1440">2560*1440</option>
+          <option value="3840x2160">3840*2160</option>
+          <option value="1366x768">1366*768</option>
+          <option value="1024x768">1024*768</option>
+        </select>
+      </div>
+      <div class="setup-row">
+        <label>Sound Options:</label>
+        <select id="cfg-sound">
+          <option value="on">ON</option>
+          <option value="off">OFF</option>
+        </select>
+      </div>
+      <div class="setup-row">
+        <label>Device type:</label>
+        <select id="cfg-device">
+          <option value="android" selected>Android armx64</option>
+          <option value="ios">iOS</option>
+          <option value="windows">Windows</option>
+          <option value="mac">macOS</option>
+          <option value="linux">Linux</option>
+          <option value="chromebook">Chromebook</option>
+        </select>
+      </div>
+    </div>
+    <div class="setup-footer">
+      <button class="btn-blue" id="btn-save-play">Save and Play</button>
     </div>
   </div>
 
-  <!-- Transparent layer: catches double-taps, blocks YouTube hover UI -->
-  <div id="catch"></div>
+  <!-- Half Page Connecting Animation -->
+  <div id="connecting-overlay">
+    <div class="connect-icon"></div>
+    <div class="connect-text">Connecting to Device...</div>
+  </div>
+</div>
 
-  <div id="loader" role="status" aria-live="polite">
-    <div id="track"><div id="fill"></div></div>
-    <div id="status">Loading video… 0%</div>
+<!-- 2ND: LOADING PAGE -->
+<div id="loading-page" class="page">
+  <video id="loading-video" src="gtaviload1.mp4" playsinline muted autoplay></video>
+</div>
+
+<!-- 3RD: MAIN APP -->
+<div id="main-app" class="page">
+  <div id="yt-bg"></div>
+  <div id="catch-layer"></div>
+  
+  <button id="sound-btn" aria-label="Toggle Sound"></button>
+  
+  <div id="pc-instruction">
+    <span class="i-icon">i</span>
+    <span id="pc-text">Press F11 for Fullscreen. Use external controller.</span>
   </div>
 
-  <!-- Menu -->
-  <div id="menu" class="hidden">
-    <div class="panel">
-      <button id="menu-close" class="menu-close" aria-label="Close menu">✕</button>
-      <img class="menu-logo" src="https://files.catbox.moe/dfjd81.png" alt="Menu">
-      <ul id="items"></ul>
-      <div class="hint">Tap or click an item to select</div>
+  <div id="gamepad">
+    <div class="pad-group dpad">
+      <button class="pad-btn" id="up" data-action="up">▲</button>
+      <button class="pad-btn" id="left" data-action="left">◀</button>
+      <button class="pad-btn" id="right" data-action="right">▶</button>
+      <button class="pad-btn" id="down" data-action="down">▼</button>
+    </div>
+    <div class="pad-center">
+      <button class="pad-btn pill" id="select" data-action="select">SELECT</button>
+      <button class="pad-btn pill" id="start" data-action="start">START</button>
+    </div>
+    <div class="pad-group face">
+      <button class="pad-btn" id="y" data-action="y">Y</button>
+      <button class="pad-btn" id="x" data-action="x">X</button>
+      <button class="pad-btn" id="b" data-action="b">B</button>
+      <button class="pad-btn" id="a" data-action="a">A</button>
     </div>
   </div>
+</div>
 
-  <!-- Notice window with sound & close controls -->
-  <div id="wizard" class="closed" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
-    <div class="titlebar">
-      <button id="wiz-sound-btn" class="icon-btn" aria-label="Toggle sound" title="Toggle sound">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-        </svg>
-      </button>
-      <span class="title" id="wiz-title">Notice</span>
-      <button id="close-btn" class="icon-btn" aria-label="Close">✕</button>
+<!-- WIZARD MODAL (Shared) -->
+<div id="wizard-modal">
+  <div class="wiz-titlebar">Notice</div>
+  <div class="wiz-body">
+    <div class="wiz-icons">
+      <!-- Controller SVG -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" width="24" height="24">
+        <path d="M7 6h10a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4h-1l-2-2h-4l-2 2H7a4 4 0 0 1-4-4v-3a4 4 0 0 1 4-4z"/>
+        <path d="M6 11h4M8 9v4"/><circle cx="15.5" cy="10.5" r="1" fill="#000"/><circle cx="17.5" cy="12.5" r="1" fill="#000"/>
+      </svg>
+      <!-- PS5 Logo -->
+      <svg viewBox="0 0 100 100" width="24" height="24" fill="#000">
+        <path d="M45 20 L45 80 L50 80 L50 25 L60 28 L60 80 L65 80 L65 30 L75 34 L75 80 L80 80 L80 40 C70 20 50 15 45 20 Z"/>
+        <text x="20" y="80" font-size="20" font-family="Arial" font-weight="bold">PS5</text>
+      </svg>
+      <!-- Xbox Logo -->
+      <svg viewBox="0 0 100 100" width="24" height="24" fill="#000">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="#000" stroke-width="8"/>
+        <path d="M25 25 Q50 50 75 75 M75 25 Q50 50 25 75" stroke="#000" stroke-width="8"/>
+      </svg>
     </div>
-    <div class="wizard-body">
-      <p>Edit this message here. It appears in the notice window.<br>
-         Sound: 🔊 top-right. Menu: <b>double‑tap</b> the screen or press <b>START</b>.</p>
+    <div style="text-align: center; font-weight: bold; margin-bottom: 5px;">
+      This Game require license and more package information to be         played.
+      We are assisting some bots to play the full game. To play it click on these links.
     </div>
-    <div class="wizard-footer">
-      <button id="ok-btn">OK</button>
+    <div class="wiz-links">
+      <div class="wiz-links-left">
+        <a href="https://www.rockstargames.com/VI" target="_blank" class="ext-link">Rockstar Games GTA VI Original Link</a>
+        <a href="https://www.xbox.com/en-US/games/store/grand-theft-auto-vi/9N4L2M5K3K2K" target="_blank" class="ext-link">Xbox Original GTA VI Link</a>
+        <a href="https://www.playstation.com/en-us/games/grand-theft-auto-vi/" target="_blank" class="ext-link">PS5 Original GTA Link</a>
+      </div>
+      <!-- Rockstar Logo -->
+      <svg viewBox="0 0 100 100" width="40" height="40" fill="#000">
+        <path d="M50 10 L60 30 L80 30 L65 45 L75 65 L50 55 L25 65 L35 45 L20 30 L40 30 Z"/>
+      </svg>
     </div>
+    <div class="copyright">Under © Rockstar Games Fan made Club</div>
   </div>
-
-  <!-- Global sound button -->
-  <button id="sound-btn" aria-label="Sound off" title="Toggle sound">
-    <svg id="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden>
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-    </svg>
-    <svg id="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-      <line x1="23" y1="9" x2="17" y2="15"/>
-      <line x1="17" y1="9" x2="23" y2="15"/>
-    </svg>
-  </button>
-
-  <div id="toast" role="status" aria-live="polite"></div>
-
-  <!-- On-screen gamepad -->
-  <div id="pad">
-    <div class="group dpad">
-      <button class="btn" id="up" data-action="up" aria-label="Up">▲</button>
-      <button class="btn" id="left" data-action="left" aria-label="Left">◀</button>
-      <button class="btn" id="right" data-action="right" aria-label="Right">▶</button>
-      <button class="btn" id="down" data-action="down" aria-label="Down">▼</button>
-    </div>
-    <div class="center">
-      <button class="btn pill" id="select" data-action="select">SELECT</button>
-      <button class="btn pill" id="start" data-action="start">START</button>
-    </div>
-    <div class="group face">
-      <button class="btn" id="y" data-action="y">Y</button>
-      <button class="btn" id="x" data-action="x">X</button>
-      <button class="btn" id="b" data-action="b">B</button>
-      <button class="btn" id="a" data-action="a">A</button>
-    </div>
+  <div class="wiz-footer">
+    <button class="wiz-btn" id="wiz-continue">Continue</button>
   </div>
+</div>
 
 <script>
-(function () {
-  'use strict';
+  /* ================= DEVICE DETECTION ================= */
+  const ua = navigator.userAgent;
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  
+  // Adjust Config Setup based on detection
+  if (isMobile) {
+    document.getElementById('cfg-device').value = isIOS ? 'ios' : 'android';
+  } else {
+    if (/Windows/i.test(ua)) document.getElementById('cfg-device').value = 'windows';
+    else if (/Mac/i.test(ua)) document.getElementById('cfg-device').value = 'mac';
+    else if (/Linux/i.test(ua)) document.getElementById('cfg-device').value = 'linux';
+    else if (/CrOS/i.test(ua)) document.getElementById('cfg-device').value = 'chromebook';
+  }
 
-  /* ======================= Config ======================= */
-  const YT_ID = 'ARwju5Gyk64';           // 47-minute video, embedded directly
-  const MENU_ITEMS = ['Resume', 'Gallery', 'Store', 'Help', 'Options'];
-  const DOUBLE_TAP_MS = 300;
-  const SAVE_INTERVAL_MS = 5000;         // persist watch time every 5 s
+  /* ================= 1ST PAGE: CONFIGURATION ================= */
+  const setupPage = document.getElementById('setup-page');
+  const loadingPage = document.getElementById('loading-page');
+  const mainApp = document.getElementById('main-app');
+  const connectingOverlay = document.getElementById('connecting-overlay');
+  const cfgDevice = document.getElementById('cfg-device');
+  
+  let connectTimer = null;
 
-  /* ======================= Refs ======================= */
-  const $ = (id) => document.getElementById(id);
-  const stage     = $('stage');
-  const ytwrap    = $('ytwrap');
-  const loader    = $('loader');
-  const fill      = $('fill');
-  const statusEl  = $('status');
-  const soundBtn  = $('sound-btn');
-  const iconOn    = $('icon-on');
-  const iconOff   = $('icon-off');
-  const wizard    = $('wizard');
-  const menu      = $('menu');
-  const itemsEl   = $('items');
-  const toastEl   = $('toast');
+  // Half Page Animation on select change
+  cfgDevice.addEventListener('change', () => {
+    connectingOverlay.classList.add('show');
+    clearTimeout(connectTimer);
+    connectTimer = setTimeout(() => {
+      connectingOverlay.classList.remove('show');
+    }, 2000); // Show for 2 seconds
+  });
 
-  /* ======================= State ======================= */
-  let player     = null;
-  let ytReady    = false;
-  let ytPlaying  = false;
-  let ytFailed   = false;
-  let muted      = true;          // start muted → autoplay is always allowed
-  let menuOpen   = false;
-  let sel        = 0;
-  let loaderDone = false;
-  let hintShown  = false;
-  let saveTimer  = null;
-  let resumeFrom = 0;             // seconds, restored from IndexedDB
+  let initialMuted = true; // Will be overridden by config
 
-  /* ======================= IndexedDB (watch metadata) ======================= */
-  const DB_NAME    = 'VideoWatchDB';
-  const DB_VERSION = 1;
-  const STORE      = 'progress';
-  let dbPromise    = null;
+  // Save and Play -> Load Loading Page
+  document.getElementById('btn-save-play').addEventListener('click', () => {
+    // Read config
+    const cfgSound = document.getElementById('cfg-sound').value;
+    initialMuted = (cfgSound === 'off');
 
-  function openDB() {
-    if (dbPromise) return dbPromise;
-    dbPromise = new Promise(function (resolve, reject) {
-      if (!('indexedDB' in window)) { reject(new Error('IndexedDB unsupported')); return; }
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = function (e) {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE)) {
-          db.createObjectStore(STORE, { keyPath: 'id' });
-        }
-      };
-      req.onsuccess = function (e) { resolve(e.target.result); };
-      req.onerror   = function (e) { reject(e.target.error); };
+    setupPage.classList.remove('active');
+    loadingPage.classList.add('active');
+    startLoadingSequence();
+  });
+
+  /* ================= 2ND PAGE: LOADING & WIZARD ================= */
+  const wizardModal = document.getElementById('wizard-modal');
+  const btnContinue = document.getElementById('wiz-continue');
+  
+  function startLoadingSequence() {
+    // Show Wizard after a brief moment
+    setTimeout(() => {
+      wizardModal.classList.add('active');
+    }, 500);
+  }
+
+  // Click Continue -> Proceed to Main App
+  btnContinue.addEventListener('click', () => {
+    wizardModal.classList.remove('active');
+    loadingPage.classList.remove('active');
+    mainApp.classList.add('active');
+    initMainApp();
+  });
+
+  // Prevent background audio when clicking external links in wizard
+  document.querySelectorAll('.ext-link').forEach(link => {
+    link.addEventListener('click', () => {
+      if (player && player.pauseVideo) {
+        player.pauseVideo();
+      }
     });
-    return dbPromise;
-  }
-
-  function saveProgress(time) {
-    if (!Number.isFinite(time) || time < 0) return;
-    openDB().then(function (db) {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put({
-        id: YT_ID,
-        time: time,
-        updated: Date.now()
-      });
-    }).catch(function () {});
-  }
-
-  function loadProgress() {
-    return openDB().then(function (db) {
-      return new Promise(function (resolve) {
-        const tx = db.transaction(STORE, 'readonly');
-        const req = tx.objectStore(STORE).get(YT_ID);
-        req.onsuccess = function () { resolve(req.result || null); };
-        req.onerror   = function () { resolve(null); };
-      });
-    }).catch(function () { return null; });
-  }
-
-  // Restore the saved time as soon as the player is ready
-  loadProgress().then(function (rec) {
-    if (rec && Number.isFinite(rec.time) && rec.time > 2) {
-      resumeFrom = rec.time;
-    }
   });
 
-  function startSaveLoop() {
-    if (saveTimer) return;
-    saveTimer = setInterval(function () {
-      if (!ytReady || ytFailed || !player) return;
-      try {
-        const t = player.getCurrentTime();
-        if (Number.isFinite(t) && t > 0) saveProgress(t);
-      } catch (e) {}
-    }, SAVE_INTERVAL_MS);
-  }
+  /* ================= 3RD PAGE: MAIN APP ================= */
+  const YT_ID = '9DFDdPQjraU'; // New ID
+  let player = null;
+  let ytReady = false;
+  let ytFailed = false;
+  let muted = true;
 
-  // Extra safety: save when the tab is hidden or closed
-  document.addEventListener('visibilitychange', function () {
-    if (!document.hidden || !ytReady || ytFailed || !player) return;
-    try {
-      const t = player.getCurrentTime();
-      if (Number.isFinite(t) && t > 0) saveProgress(t);
-    } catch (e) {}
-  });
-  window.addEventListener('pagehide', function () {
-    if (!ytReady || ytFailed || !player) return;
-    try {
-      const t = player.getCurrentTime();
-      if (Number.isFinite(t) && t > 0) saveProgress(t);
-    } catch (e) {}
-  });
+  function initMainApp() {
+    // Fix: Prevent multiple initializations (video configuration error)
+    if (player) return;
 
-  /* ======================= Toast ======================= */
-  let toastTimer = null;
-  function toast(msg, ms) {
-    toastEl.textContent = msg;
-    toastEl.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, ms || 2800);
-  }
+    muted = initialMuted;
 
-  /* ======================= Notice window ======================= */
-  function openWizard()  { wizard.classList.remove('closed'); }
-  function closeWizard() {
-    wizard.classList.add('closed');
-    if (!hintShown) {
-      hintShown = true;
-      toast('Double‑tap to open the menu · 🔊 for sound', 4200);
+    // 1. Setup UI based on Mobile vs PC
+    if (isMobile) {
+      document.getElementById('gamepad').style.display = 'flex';
+    } else {
+      // Show intermittent instruction tooltip
+      startTooltipLoop();
     }
-  }
-  $('close-btn').addEventListener('click', closeWizard);
-  $('ok-btn').addEventListener('click', closeWizard);
 
-  /* ======================= Sound ======================= */
-  function updateSoundUI() {
-    iconOn.hidden  = muted;
-    iconOff.hidden = !muted;
-    soundBtn.setAttribute('aria-label', muted ? 'Sound off' : 'Sound on');
-    soundBtn.title = muted ? 'Turn sound on' : 'Turn sound off';
-    // Favicon stays as a single static sound icon — never swapped.
-  }
-  function applySound() {
-    if (!ytReady || ytFailed) return;
-    try { muted ? player.mute() : player.unMute(); } catch (e) {}
-    updateSoundUI();
-  }
-  function ensureAudible() {
-    if (muted) return;
-    if (ytReady && !ytFailed) { try { player.unMute(); } catch (e) {} }
-  }
-  function toggleSound() {
-    muted = !muted;
-    applySound();
-    toast(muted ? 'Sound off' : 'Sound on');
-  }
-  soundBtn.addEventListener('click', function (e) { e.stopPropagation(); toggleSound(); });
-  $('wiz-sound-btn').addEventListener('click', function (e) { e.stopPropagation(); toggleSound(); });
-  updateSoundUI();
-
-  /* ======================= Cover the viewport with the 16:9 player ======================= */
-  function sizeStage() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const ratio = 16 / 9;
-    let width, height;
-    if (w / h > ratio) { width = w; height = w / ratio; }
-    else               { height = h; width = h * ratio; }
-
-    // Oversize so YouTube's titlebar / share / controls sit off-screen.
-    const crop = 1.30;
-    width  *= crop;
-    height *= crop;
-
-    ytwrap.style.width  = width  + 'px';
-    ytwrap.style.height = height + 'px';
-  }
-  sizeStage();
-  window.addEventListener('resize', sizeStage);
-  window.addEventListener('orientationchange', sizeStage);
-
-  /* ======================= Loader ======================= */
-  function setProgress(pct) {
-    fill.style.width = pct + '%';
-    statusEl.textContent = 'Loading video… ' + pct + '%';
-  }
-  function hideLoader(msg) {
-    if (loaderDone) return;
-    loaderDone = true;
-    fill.style.width = '100%';
-    statusEl.textContent = msg || 'Ready';
-    setTimeout(function () { loader.classList.add('hide'); }, msg ? 1800 : 300);
-    setTimeout(openWizard, 700);
-  }
-  setTimeout(function () { hideLoader(); }, 30000);   // safety net
-
-  /* ======================= YouTube engine ======================= */
-  function loadYouTubeAPI(cb) {
-    if (window.YT && window.YT.Player) return cb();
-    if (!window.__ytCbs) {
-      window.__ytCbs = [];
-      window.onYouTubeIframeAPIReady = function () {
-        const cbs = window.__ytCbs || [];
-        window.__ytCbs = [];
-        cbs.forEach(function (fn) { try { fn(); } catch (e) {} });
-      };
-      const s = document.createElement('script');
-      s.src = 'https://www.youtube.com/iframe_api';
-      s.async = true;
-      document.head.appendChild(s);
-    }
-    window.__ytCbs.push(cb);
-  }
-
-  function startYouTube() {
-    if (player || ytFailed) return;
-    loadYouTubeAPI(function () {
-      player = new YT.Player('yt', {
-        width: '100%',
-        height: '100%',
+    // 2. Load YouTube API
+    loadYouTubeAPI(() => {
+      player = new YT.Player('yt-bg', {
         videoId: YT_ID,
         host: 'https://www.youtube-nocookie.com',
         playerVars: {
-          autoplay: 1,
-          mute: 1,             // required for autoplay
-          controls: 0,         // no player buttons
-          disablekb: 1,
-          fs: 0,
-          modestbranding: 1,
-          rel: 0,
-          showinfo: 0,
-          iv_load_policy: 3,
-          playsinline: 1,
-          loop: 1,
-          playlist: YT_ID,
-          enablejsapi: 1,
-          origin: location.origin
+          autoplay: 1, mute: initialMuted ? 1 : 0, controls: 0, disablekb: 1, fs: 0,
+          modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3,
+          playsinline: 1, loop: 1, playlist: YT_ID
         },
         events: {
-          onReady: function (e) {
+          onReady: (e) => {
             ytReady = true;
-            try { e.target.mute(); } catch (err) {}
-            // Restore watch position (if we have one)
-            if (resumeFrom > 0) {
-              try {
-                e.target.seekTo(resumeFrom, true);
-                toast('Resumed from ' + formatTime(resumeFrom), 3200);
-              } catch (err) {}
-            }
-            try { e.target.playVideo(); } catch (err) {}
-            applySound();
-            setProgress(60);
-            startSaveLoop();
+            if (muted) e.target.mute();
+            else e.target.unMute();
+            e.target.playVideo();
+            updateSoundUI();
           },
-          onStateChange: function (e) {
-            if (e.data === YT.PlayerState.PLAYING) {
-              ytPlaying = true;
-              setProgress(100);
-              hideLoader();
-            }
-            if (e.data === YT.PlayerState.PAUSED) {
-              try {
-                const t = e.target.getCurrentTime();
-                if (Number.isFinite(t) && t > 0) saveProgress(t);
-              } catch (err) {}
-            }
-            if (e.data === YT.PlayerState.ENDED) {
-              // The video finished — reset saved position so it starts fresh
-              saveProgress(0);
-              try { e.target.seekTo(0); e.target.playVideo(); } catch (err) {}
-            }
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.ENDED) e.target.playVideo();
           },
-          onError: function () {
-            ytFailed = true;
-            hideLoader('Background video unavailable — check the video ID or embedding permissions.');
-          }
+          onError: () => { ytFailed = true; }
         }
       });
     });
   }
-  startYouTube();
 
-  function formatTime(sec) {
-    sec = Math.floor(sec);
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+  function loadYouTubeAPI(cb) {
+    if (window.YT && window.YT.Player) return cb();
+    window.onYouTubeIframeAPIReady = cb;
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
   }
 
-  /* ======================= Menu ======================= */
-  function renderMenu() {
-    itemsEl.innerHTML = MENU_ITEMS.map(function (t, i) {
-      return '<li data-i="' + i + '" class="' + (i === sel ? 'sel' : '') + '">' + t + '</li>';
-    }).join('');
-  }
-  function openMenu() {
-    if (menuOpen) return;
-    menuOpen = true;
-    menu.classList.remove('hidden');
-    stage.classList.add('blur');
-    // Keep the YouTube video playing (no pause) so its UI stays hidden.
-    updateSoundUI();
-  }
-  function closeMenu() {
-    if (!menuOpen) return;
-    menuOpen = false;
-    menu.classList.add('hidden');
-    stage.classList.remove('blur');
-    updateSoundUI();
-  }
-  function moveSel(step) {
-    sel = (sel + step + MENU_ITEMS.length) % MENU_ITEMS.length;
-    renderMenu();
-  }
-  function activateSel() {
-    const name = MENU_ITEMS[sel];
-    if (name === 'Resume') { closeMenu(); return; }
-    if (name === 'Help')   { closeMenu(); openWizard(); return; }
-    toast(name + ' — coming soon');
-  }
-  itemsEl.addEventListener('click', function (e) {
-    const li = e.target.closest('li');
-    if (!li) return;
-    sel = Number(li.dataset.i);
-    renderMenu();
-    activateSel();
-  });
-  menu.addEventListener('click', function (e) { if (e.target === menu) closeMenu(); });
-  $('menu-close').addEventListener('click', function (e) { e.stopPropagation(); closeMenu(); });
-  renderMenu();
+  /* ================= PC TOOLTIP LOGIC ================= */
+  const pcInstruction = document.getElementById('pc-instruction');
+  const pcText = document.getElementById('pc-text');
+  const tooltips = [
+    "Press F11 for Fullscreen. Use external controller.",
+    "Connect a Bluetooth PS5/Xbox controller for best experience.",
+    "Use Arrow Keys or WASD to navigate.",
+    "Ensure you have a stable internet connection.",
+    "Press M to toggle audio."
+  ];
 
-  /* ======================= Double‑tap to open menu ======================= */
-  let lastTap = 0;
-  $('catch').addEventListener('pointerdown', function (e) {
-    const now = Date.now();
-    if (now - lastTap < DOUBLE_TAP_MS) {
-      e.preventDefault();
-      goFullscreen();
-      openMenu();
-      lastTap = 0;
-    } else {
-      lastTap = now;
+  function startTooltipLoop() {
+    function loop() {
+      const delay = Math.floor(Math.random() * 10000) + 15000; // 15-25s
+      setTimeout(() => {
+        const msg = tooltips[Math.floor(Math.random() * tooltips.length)];
+        pcText.textContent = msg;
+        pcInstruction.style.display = 'flex';
+        
+        setTimeout(() => { pcInstruction.style.opacity = '1'; }, 50);
+
+        setTimeout(() => {
+          pcInstruction.style.opacity = '0';
+          setTimeout(() => { pcInstruction.style.display = 'none'; }, 500);
+          loop();
+        }, 5000);
+      }, delay);
     }
-  });
+    loop();
+  }
 
-  /* ======================= Fullscreen + first‑tap helpers ======================= */
-  function goFullscreen() {
-    const el = document.documentElement;
-    if (document.fullscreenElement || document.webkitFullscreenElement) return;
-    const req = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (!req) return;
+  /* ================= SOUND & UI (New Icons) ================= */
+  const soundBtn = document.getElementById('sound-btn');
+  
+  // SVG Icons
+  const SVG_ON = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+    </svg>`;
+
+  // Red arrow/cross for muted state
+  const SVG_OFF = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/>
+      <path d="M17 9 L23 15 M23 9 L17 15" stroke="#ff3333" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>`;
+
+  function updateSoundUI() {
+    soundBtn.innerHTML = muted ? SVG_OFF : SVG_ON;
+    soundBtn.style.color = muted ? '#ff3333' : '#ffffff';
+  }
+
+  function applySound() {
+    if (!ytReady || ytFailed || !player) return;
     try {
-      const r = req.call(el);
-      if (r && r.catch) r.catch(function () {});
+      muted ? player.mute() : player.unMute();
     } catch (e) {}
+    updateSoundUI();
   }
-  document.addEventListener('pointerdown', function () {
-    goFullscreen();
-    ensureAudible();
-    if (!ytPlaying && ytReady && !ytFailed) {
-      try { player.playVideo(); } catch (e) {}
-    }
-  }, { capture: true });
 
-  /* ======================= On-screen gamepad (pointer only) ======================= */
-  function handleAction(action) {
-    if (!wizard.classList.contains('closed')) {
-      if (action === 'a' || action === 'b' || action === 'start') closeWizard();
-      return;
-    }
-    if (menuOpen) {
-      if (action === 'up') moveSel(-1);
-      else if (action === 'down') moveSel(1);
-      else if (action === 'a' || action === 'start') activateSel();
-      else if (action === 'b') closeMenu();
-      return;
-    }
-    if (action === 'start') { openMenu(); return; }
-    onPress(action);
-  }
-  function onPress(action)   { console.log('press', action); }
-  function onRelease(action) { console.log('release', action); }
-
-  document.querySelectorAll('#pad .btn').forEach(function (btn) {
-    const action = btn.dataset.action;
-    btn.addEventListener('pointerdown', function (e) {
-      e.preventDefault();
-      goFullscreen();
-      ensureAudible();
-      btn.classList.add('active');
-      handleAction(action);
-    });
-    function release() {
-      if (!btn.classList.contains('active')) return;
-      btn.classList.remove('active');
-      if (!menuOpen) onRelease(action);
-    }
-    btn.addEventListener('pointerup', release);
-    btn.addEventListener('pointerleave', release);
-    btn.addEventListener('pointercancel', release);
+  soundBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    muted = !muted;
+    applySound();
   });
 
-  /* ======================= Keyboard: disabled ======================= */
-  // All controller / keyboard shortcuts (arrows, WASD, Enter, Shift, M, Esc)
-  // have been intentionally removed. Input is handled only via pointer/touch.
+  // Initial UI
+  updateSoundUI();
 
-  /* ======================= Boot ======================= */
-  // (Favicon is a single static sound icon — nothing to swap.)
-})();
+  /* ================= BACKGROUND AUDIO PREVENTION ================= */
+  // Pause video when user switches tabs to prevent background sound bleed
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (player && player.pauseVideo) player.pauseVideo();
+    } else {
+      if (player && player.playVideo && mainApp.classList.contains('active')) {
+        player.playVideo();
+      }
+    }
+  });
+
+  /* ================= TOUCH CONTROLS (Mobile only) ================= */
+  document.querySelectorAll('#gamepad .pad-btn').forEach(btn => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      btn.classList.add('active');
+    });
+    btn.addEventListener('pointerup', (e) => {
+      e.preventDefault();
+      btn.classList.remove('active');
+    });
+    btn.addEventListener('pointerleave', (e) => {
+      btn.classList.remove('active');
+    });
+  });
+
+  // Prevent double tap zoom on the catch layer
+  document.getElementById('catch-layer').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+  });
+
 </script>
 </body>
 </html>
