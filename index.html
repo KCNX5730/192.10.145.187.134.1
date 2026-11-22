@@ -109,7 +109,7 @@
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   .connect-text { font-size: 16px; color: #333; font-weight: bold; }
 
-  /* ================= ROTATE PAGE (NEW) ================= */
+  /* ================= ROTATE PAGE ================= */
   #rotate-page {
     background: #000;
     display: none; align-items: center; justify-content: center;
@@ -159,7 +159,7 @@
   }
   .vid-layer.active { opacity: 1; }
 
-  /* YouTube-style "Fetching assets" loader (NEW) */
+  /* YouTube-style "Fetching assets" loader */
   #black-loader {
     position: absolute; inset: 0;
     background: #000;
@@ -382,7 +382,7 @@
   </div>
 </div>
 
-<!-- ROTATE PAGE (NEW) -->
+<!-- ROTATE PAGE -->
 <div id="rotate-page" class="page">
   <div class="rotate-content">
     <div class="rotate-phone">
@@ -399,7 +399,7 @@
   <video id="vid-phase1" class="vid-layer" src="https://res.cloudinary.com/ccmt3psw/video/upload/vidssave.com_GTA_6_-_FULL_Loading_Screen_INTRO_Grand_Theft_Auto_VI_1080P_lj0kdo.mp4" playsinline muted></video>
   <video id="vid-phase2" class="vid-layer" src="gtaviload1.mp4" playsinline muted></video>
 
-  <!-- YouTube-style "Fetching assets" loader (NEW) -->
+  <!-- YouTube-style "Fetching assets" loader -->
   <div id="black-loader">
     <div class="yt-spinner"></div>
     <div class="yt-loader-text">Fetching assets...</div>
@@ -551,7 +551,7 @@
     showRotatePage();
   });
 
-  /* ================= ROTATE PAGE LOGIC (NEW) ================= */
+  /* ================= ROTATE PAGE LOGIC ================= */
   function showRotatePage() {
     rotatePage.classList.add('active');
 
@@ -630,7 +630,7 @@
           mainApp.style.opacity = '1';
           loadingSeqPage.classList.remove('active');
           loadingSeqPage.style.display = 'none'; // Fully remove
-        }, 10000); // <--- 10 Seconds black screen (was 6000)
+        }, 10000); // <--- 10 Seconds black screen
 
       }, 6000);
     };
@@ -761,11 +761,14 @@
         playerVars: {
           autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0,
           modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3,
-          playsinline: 1, loop: 1, playlist: YT_ID, enablejsapi: 1
+          playsinline: 1, loop: 1, playlist: YT_ID, enablejsapi: 1,
+          cc_load_policy: 0
         },
         events: {
           onReady: (e) => {
             ytReady = true;
+            // Force-disable captions/subtitles regardless of video defaults
+            try { e.target.unloadModule('captions'); } catch(err) {}
             if (isMuted) e.target.mute();
             else e.target.unMute(); 
             
