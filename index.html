@@ -25,7 +25,7 @@
   }
 
   /* ================= PAGE MANAGEMENT ================= */
-  .page { position: fixed; inset: 0; display: none; overflow: hidden; z-index: 1; }
+  .page { position: fixed; inset: 0; display: none; overflow: hidden; }
   .page.active { display: block; }
 
   /* ================= 1ST: WIZARD MODAL ================= */
@@ -110,17 +110,23 @@
   .connect-text { font-size: 16px; color: #333; font-weight: bold; }
 
   /* ================= 3RD: LOADING SEQUENCE ================= */
-  #loading-sequence-page { background: #000; }
+  #loading-seq-page { background: #000; z-index: 40; }
   .vid-layer {
     position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; z-index: 1; opacity: 0; transition: opacity 0.5s ease;
   }
   .vid-layer.active { opacity: 1; }
 
-  /* ================= 4TH: MAIN APP (STRICT CROP) ================= */
-  #main-app { background: #000; }
+  /* ================= 4TH: MAIN APP ================= */
+  #main-app { 
+    background: #000; 
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  #main-app.active { display: block; opacity: 1; }
   
-  /* 1.4x scale and 150% size completely hides YouTube titlebar, share button, and controls */
+  /* 1.4x scale and 150% size completely hides YouTube UI */
   #yt-container {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%) scale(1.4);
@@ -130,7 +136,11 @@
   }
   #yt-container iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
 
-  #catch-layer { position: fixed; inset: 0; z-index: 5; background: transparent; touch-action: manipulation; }
+  /* Blocks all clicks from reaching the YouTube UI */
+  #catch-layer { 
+    position: fixed; inset: 0; z-index: 5; 
+    background: transparent; touch-action: manipulation; 
+  }
 
   /* Sound Button */
   #sound-btn {
@@ -293,12 +303,10 @@
   </div>
 </div>
 
-<!-- LOADING SEQUENCE PAGE (Two videos) -->
-<div id="loading-sequence-page" class="page">
-  <!-- Phase 1 Video -->
-  <video id="vid-phase1" class="vid-layer active" src="https://res.cloudinary.com/ccmt3psw/video/upload/vidssave.com_GTA_6_-_FULL_Loading_Screen_INTRO_Grand_Theft_Auto_VI_1080P_lj0kdo.mp4" playsinline muted autoplay></video>
-  <!-- Phase 2 Video -->
-  <video id="vid-phase2" class="vid-layer" src="gtaviload1.mp4" playsinline muted autoplay></video>
+<!-- LOADING SEQUENCE PAGE -->
+<div id="loading-seq-page" class="page">
+  <video id="vid-phase1" class="vid-layer" src="https://res.cloudinary.com/ccmt3psw/video/upload/vidssave.com_GTA_6_-_FULL_Loading_Screen_INTRO_Grand_Theft_Auto_VI_1080P_lj0kdo.mp4" playsinline muted></video>
+  <video id="vid-phase2" class="vid-layer" src="gtaviload1.mp4" playsinline muted></video>
 </div>
 
 <!-- MAIN APP -->
@@ -363,7 +371,7 @@
   }
 
   /* ================= GLOBAL STATE ================= */
-  let isMuted = false; // Start Unmuted for the full experience
+  let isMuted = false; 
   let player = null;
   let ytReady = false;
   let ytFailed = false;
@@ -397,22 +405,33 @@
     updateGlobalSoundUI();
   }
 
-  // Attach listeners to both sound buttons
   document.getElementById('wiz-sound-btn').addEventListener('click', toggleSound);
   document.getElementById('sound-btn').addEventListener('click', toggleSound);
   updateGlobalSoundUI(); // Init
 
+  // Global interaction to fix browser audio autoplay blocks
+  document.addEventListener('pointerdown', () => {
+    if (!isMuted) {
+      const v1 = document.getElementById('vid-phase1');
+      const v2 = document.getElementById('vid-phase2');
+      if (v1 && !v1.paused) v1.muted = false;
+      if (v2 && !v2.paused) v2.muted = false;
+      if (ytReady && !ytFailed && player) {
+        try { player.unMute(); } catch(e){}
+      }
+    }
+  });
 
   /* ================= PAGE FLOW 1: WIZARD -> SETUP ================= */
   const wizardModal = document.getElementById('wizard-modal');
   const setupPage = document.getElementById('setup-page');
-  const loadingSeqPage = document.getElementById('loading-sequence-page');
+  const loadingSeqPage = document.getElementById('loading-seq-page');
   const mainApp = document.getElementById('main-app');
 
   document.getElementById('wiz-continue').addEventListener('click', () => {
     wizardModal.classList.remove('active');
     setupPage.classList.add('active');
-    requestFullscreen(); // Enter fullscreen on user interaction
+    requestFullscreen(); 
   });
 
   /* ================= PAGE FLOW 2: SETUP -> LOADING ================= */
@@ -431,8 +450,7 @@
   document.getElementById('btn-save-play').addEventListener('click', () => {
     setupPage.classList.remove('active');
     loadingSeqPage.classList.add('active');
-    
-    // Start sequence
+    requestFullscreen();
     playLoadingSequence();
   });
 
@@ -442,39 +460,39 @@
 
   function playLoadingSequence() {
     // Phase 1: Play Cloudinary Video
+    vid1.classList.add('active');
     vid1.currentTime = 0;
     vid1.muted = isMuted;
-    vid1.play().catch(() => {
-      // Fallback if autoplay blocked: mute and play
-      vid1.muted = true;
-      vid1.play();
-    });
+    vid1.play().catch(() => { vid1.muted = true; vid1.play(); });
 
-    // When Phase 1 ends, switch to Phase 2
+    // Transition to Phase 2 on end
     vid1.onended = () => {
       vid1.classList.remove('active');
       vid2.classList.add('active');
       
-      // Phase 2: Play local gtaviload1.mp4
+      // Phase 2: Play gtaviload1.mp4
       vid2.currentTime = 0;
       vid2.muted = isMuted;
-      vid2.play();
+      vid2.play().catch(() => { vid2.muted = true; vid2.play(); });
 
-      // When Phase 2 ends, transition to Main App
-      vid2.onended = () => {
-        loadingSeqPage.classList.remove('active');
-        mainApp.classList.add('active');
-        initMainApp();
-      };
-      
-      // Fallback timer for Phase 2 (safety)
+      // Play vid2 for exactly 6 seconds
       setTimeout(() => {
-        if (loadingSeqPage.classList.contains('active')) {
+        // Hide vid2 (reveals the black background)
+        vid2.classList.remove('active');
+        
+        // Preload YouTube in the background while we wait 4 seconds on black screen
+        mainApp.style.display = 'block'; // Make it renderable
+        mainApp.style.opacity = '0';     // Keep it invisible
+        initMainApp();
+
+        // After 4 seconds of black screen, fade in the main app
+        setTimeout(() => {
+          mainApp.style.opacity = '1';
           loadingSeqPage.classList.remove('active');
-          mainApp.classList.add('active');
-          initMainApp();
-        }
-      }, 15000); 
+          loadingSeqPage.style.display = 'none'; // fully remove
+        }, 4000);
+
+      }, 6000);
     };
   }
 
@@ -601,7 +619,7 @@
         videoId: YT_ID,
         host: 'https://www.youtube-nocookie.com',
         playerVars: {
-          autoplay: 1, mute: isMuted ? 1 : 0, controls: 0, disablekb: 1, fs: 0,
+          autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0,
           modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3,
           playsinline: 1, loop: 1, playlist: YT_ID, enablejsapi: 1
         },
@@ -609,7 +627,7 @@
           onReady: (e) => {
             ytReady = true;
             if (isMuted) e.target.mute();
-            else e.target.unMute();
+            else e.target.unMute(); // Try to unmute immediately
             
             if (resumeFrom > 0) {
               try {
@@ -678,14 +696,14 @@
     if (menuOpen) return;
     menuOpen = true;
     menuEl.classList.add('active');
-    document.getElementById('main-app').style.filter = 'blur(10px) brightness(0.5)';
+    mainApp.style.filter = 'blur(10px) brightness(0.5)';
   }
 
   function closeMenu() {
     if (!menuOpen) return;
     menuOpen = false;
     menuEl.classList.remove('active');
-    document.getElementById('main-app').style.filter = 'none';
+    mainApp.style.filter = 'none';
   }
 
   function moveSel(step) {
