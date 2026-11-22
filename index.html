@@ -50,13 +50,20 @@
   .wiz-links-left { display: flex; flex-direction: column; gap: 8px; }
   .wiz-links a { color: #0078d7; text-decoration: none; font-weight: bold; }
   .wiz-links a:hover { text-decoration: underline; }
-  .wiz-footer { padding: 12px; text-align: right; border-top: 1px solid #ccc; }
+  .wiz-footer { padding: 12px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; }
   .wiz-btn {
     padding: 6px 24px; font-size: 13px; cursor: pointer;
     background: #e1e1e1; border: 1px solid #adadad;
   }
   .wiz-btn:hover { background: #e5f1fb; border-color: #0078d7; }
   .copyright { font-size: 5px; color: #666; text-align: right; margin-top: 5px; }
+  
+  /* Wizard Sound Button */
+  #wiz-sound-btn {
+    background: transparent; border: none; cursor: pointer; padding: 5px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #wiz-sound-btn svg { width: 24px; height: 24px; }
 
   /* ================= 2ND: SETUP CONFIG ================= */
   #setup-page {
@@ -102,32 +109,28 @@
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   .connect-text { font-size: 16px; color: #333; font-weight: bold; }
 
-  /* ================= 3RD: LOADING PAGE ================= */
-  #loading-page { background: #000; }
-  #loading-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  /* ================= 3RD: LOADING SEQUENCE ================= */
+  #loading-sequence-page { background: #000; }
+  .vid-layer {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; z-index: 1; opacity: 0; transition: opacity 0.5s ease;
+  }
+  .vid-layer.active { opacity: 1; }
 
-  /* ================= 4TH: MAIN APP (NATIVE RATIO) ================= */
+  /* ================= 4TH: MAIN APP (STRICT CROP) ================= */
   #main-app { background: #000; }
   
-  /* Full screen container without zoom */
+  /* 1.4x scale and 150% size completely hides YouTube titlebar, share button, and controls */
   #yt-container {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(1.4);
+    width: 150vw; height: 84.375vw; /* 150vw / 16*9 */
+    min-height: 150vh; min-width: 266.66vh;
     pointer-events: none; z-index: 1; overflow: hidden;
   }
-  /* The iframe fills the screen naturally */
-  #yt-container iframe { 
-    width: 100%; 
-    height: 100%; 
-    border: 0; 
-    pointer-events: none; 
-  }
+  #yt-container iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
 
-  /* Blocks all clicks from reaching the YouTube UI */
-  #catch-layer { 
-    position: fixed; inset: 0; z-index: 5; 
-    background: transparent; touch-action: manipulation; 
-  }
+  #catch-layer { position: fixed; inset: 0; z-index: 5; background: transparent; touch-action: manipulation; }
 
   /* Sound Button */
   #sound-btn {
@@ -230,6 +233,7 @@
     <div class="copyright">Under © Rockstar Games Fan made Club</div>
   </div>
   <div class="wiz-footer">
+    <button id="wiz-sound-btn" aria-label="Toggle Sound"></button>
     <button class="wiz-btn" id="wiz-continue">Continue</button>
   </div>
 </div>
@@ -289,9 +293,12 @@
   </div>
 </div>
 
-<!-- LOADING PAGE -->
-<div id="loading-page" class="page">
-  <video id="loading-video" src="gtaviload1.mp4" playsinline muted autoplay></video>
+<!-- LOADING SEQUENCE PAGE (Two videos) -->
+<div id="loading-sequence-page" class="page">
+  <!-- Phase 1 Video -->
+  <video id="vid-phase1" class="vid-layer active" src="https://res.cloudinary.com/ccmt3psw/video/upload/vidssave.com_GTA_6_-_FULL_Loading_Screen_INTRO_Grand_Theft_Auto_VI_1080P_lj0kdo.mp4" playsinline muted autoplay></video>
+  <!-- Phase 2 Video -->
+  <video id="vid-phase2" class="vid-layer" src="gtaviload1.mp4" playsinline muted autoplay></video>
 </div>
 
 <!-- MAIN APP -->
@@ -355,18 +362,60 @@
     else if (/CrOS/i.test(ua)) document.getElementById('cfg-device').value = 'chromebook';
   }
 
+  /* ================= GLOBAL STATE ================= */
+  let isMuted = false; // Start Unmuted for the full experience
+  let player = null;
+  let ytReady = false;
+  let ytFailed = false;
+
+  const SVG_ON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+  const SVG_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M17 9 L23 15 M23 9 L17 15" stroke="#ff3333" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+
+  function updateGlobalSoundUI() {
+    const icon = isMuted ? SVG_OFF : SVG_ON;
+    const color = isMuted ? '#ff3333' : '#ffffff';
+    
+    document.getElementById('wiz-sound-btn').innerHTML = icon;
+    document.getElementById('wiz-sound-btn').style.color = color;
+    document.getElementById('sound-btn').innerHTML = icon;
+    document.getElementById('sound-btn').style.color = color;
+    
+    // Sync Video states
+    const v1 = document.getElementById('vid-phase1');
+    const v2 = document.getElementById('vid-phase2');
+    if(v1) v1.muted = isMuted;
+    if(v2) v2.muted = isMuted;
+
+    // Sync YT Player
+    if (ytReady && !ytFailed && player) {
+      try { isMuted ? player.mute() : player.unMute(); } catch(e){}
+    }
+  }
+
+  function toggleSound() {
+    isMuted = !isMuted;
+    updateGlobalSoundUI();
+  }
+
+  // Attach listeners to both sound buttons
+  document.getElementById('wiz-sound-btn').addEventListener('click', toggleSound);
+  document.getElementById('sound-btn').addEventListener('click', toggleSound);
+  updateGlobalSoundUI(); // Init
+
+
   /* ================= PAGE FLOW 1: WIZARD -> SETUP ================= */
   const wizardModal = document.getElementById('wizard-modal');
   const setupPage = document.getElementById('setup-page');
-  const loadingPage = document.getElementById('loading-page');
+  const loadingSeqPage = document.getElementById('loading-sequence-page');
   const mainApp = document.getElementById('main-app');
 
   document.getElementById('wiz-continue').addEventListener('click', () => {
     wizardModal.classList.remove('active');
     setupPage.classList.add('active');
+    requestFullscreen(); // Enter fullscreen on user interaction
   });
 
-  /* ================= PAGE FLOW 2: SETUP -> LOADING -> MAIN ================= */
+  /* ================= PAGE FLOW 2: SETUP -> LOADING ================= */
   const connectingOverlay = document.getElementById('connecting-overlay');
   const cfgDevice = document.getElementById('cfg-device');
   let connectTimer = null;
@@ -379,45 +428,76 @@
     }, 2000);
   });
 
-  let initialMuted = true;
-  let configDeviceType = 'android';
-
   document.getElementById('btn-save-play').addEventListener('click', () => {
-    initialMuted = (document.getElementById('cfg-sound').value === 'off');
-    configDeviceType = document.getElementById('cfg-device').value;
-
     setupPage.classList.remove('active');
-    loadingPage.classList.add('active');
+    loadingSeqPage.classList.add('active');
     
-    // Play the 12-second loading video
-    const loadVid = document.getElementById('loading-video');
-    loadVid.currentTime = 0;
-    loadVid.play();
-
-    // After 12 seconds, transition to Main App and start YouTube
-    setTimeout(() => {
-      loadingPage.classList.remove('active');
-      mainApp.classList.add('active');
-      initMainApp();
-    }, 12000); 
+    // Start sequence
+    playLoadingSequence();
   });
+
+  /* ================= LOADING SEQUENCE LOGIC ================= */
+  const vid1 = document.getElementById('vid-phase1');
+  const vid2 = document.getElementById('vid-phase2');
+
+  function playLoadingSequence() {
+    // Phase 1: Play Cloudinary Video
+    vid1.currentTime = 0;
+    vid1.muted = isMuted;
+    vid1.play().catch(() => {
+      // Fallback if autoplay blocked: mute and play
+      vid1.muted = true;
+      vid1.play();
+    });
+
+    // When Phase 1 ends, switch to Phase 2
+    vid1.onended = () => {
+      vid1.classList.remove('active');
+      vid2.classList.add('active');
+      
+      // Phase 2: Play local gtaviload1.mp4
+      vid2.currentTime = 0;
+      vid2.muted = isMuted;
+      vid2.play();
+
+      // When Phase 2 ends, transition to Main App
+      vid2.onended = () => {
+        loadingSeqPage.classList.remove('active');
+        mainApp.classList.add('active');
+        initMainApp();
+      };
+      
+      // Fallback timer for Phase 2 (safety)
+      setTimeout(() => {
+        if (loadingSeqPage.classList.contains('active')) {
+          loadingSeqPage.classList.remove('active');
+          mainApp.classList.add('active');
+          initMainApp();
+        }
+      }, 15000); 
+    };
+  }
+
+  function requestFullscreen() {
+    const el = document.documentElement;
+    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) {
+      try { req.call(el); } catch(e){}
+    }
+  }
 
   /* ================= MAIN APP LOGIC ================= */
   const YT_ID = '9DFDdPQjraU';
-  let player = null;
-  let ytReady = false;
   let ytPlaying = false;
-  let ytFailed = false;
-  let muted = initialMuted;
   let menuOpen = false;
   let sel = 0;
-  let saveTimer = null;
   let resumeFrom = 0;
+  let saveTimer = null;
 
   const toastEl = document.getElementById('toast');
   const menuEl = document.getElementById('menu');
   const itemsEl = document.getElementById('items');
-  const soundBtn = document.getElementById('sound-btn');
   const pcInstruction = document.getElementById('pc-instruction');
   const pcText = document.getElementById('pc-text');
 
@@ -497,28 +577,6 @@
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms || 2800);
   }
 
-  /* ================= Sound Icons ================= */
-  const SVG_ON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
-  const SVG_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M17 9 L23 15 M23 9 L17 15" stroke="#ff3333" stroke-width="2.5" stroke-linecap="round"/></svg>`;
-
-  function updateSoundUI() {
-    soundBtn.innerHTML = muted ? SVG_OFF : SVG_ON;
-    soundBtn.style.color = muted ? '#ff3333' : '#ffffff';
-  }
-
-  function applySound() {
-    if (!ytReady || ytFailed || !player) return;
-    try { muted ? player.mute() : player.unMute(); } catch (e) {}
-    updateSoundUI();
-  }
-
-  soundBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    muted = !muted;
-    applySound();
-    toast(muted ? 'Sound off' : 'Sound on');
-  });
-
   /* ================= YouTube API ================= */
   function loadYouTubeAPI(cb) {
     if (window.YT && window.YT.Player) return cb();
@@ -530,7 +588,7 @@
 
   function initMainApp() {
     if (player) return;
-    updateSoundUI();
+    updateGlobalSoundUI();
 
     if (isMobile) {
       document.getElementById('gamepad').style.display = 'flex';
@@ -543,14 +601,16 @@
         videoId: YT_ID,
         host: 'https://www.youtube-nocookie.com',
         playerVars: {
-          autoplay: 1, mute: 1, controls: 0, disablekb: 1, fs: 0,
+          autoplay: 1, mute: isMuted ? 1 : 0, controls: 0, disablekb: 1, fs: 0,
           modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3,
           playsinline: 1, loop: 1, playlist: YT_ID, enablejsapi: 1
         },
         events: {
           onReady: (e) => {
             ytReady = true;
-            e.target.mute();
+            if (isMuted) e.target.mute();
+            else e.target.unMute();
+            
             if (resumeFrom > 0) {
               try {
                 e.target.seekTo(resumeFrom, true);
@@ -558,7 +618,6 @@
               } catch (err) {}
             }
             e.target.playVideo();
-            applySound();
             startSaveLoop();
           },
           onStateChange: (e) => {
@@ -578,120 +637,4 @@
   }
 
   function formatTime(sec) {
-    sec = Math.floor(sec);
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
-  }
-
-  /* ================= PC Tooltip ================= */
-  const tooltips = [
-    "Press F11 for Fullscreen. Use external controller.",
-    "Connect a Bluetooth PS5/Xbox controller for best experience.",
-    "Use Arrow Keys or WASD to navigate.",
-    "Ensure you have a stable internet connection."
-  ];
-  function startTooltipLoop() {
-    function loop() {
-      const delay = Math.floor(Math.random() * 10000) + 15000;
-      setTimeout(() => {
-        pcText.textContent = tooltips[Math.floor(Math.random() * tooltips.length)];
-        pcInstruction.style.display = 'flex';
-        setTimeout(() => pcInstruction.style.opacity = '1', 50);
-        setTimeout(() => {
-          pcInstruction.style.opacity = '0';
-          setTimeout(() => { pcInstruction.style.display = 'none'; loop(); }, 500);
-        }, 5000);
-      }, delay);
-    }
-    loop();
-  }
-
-  /* ================= Menu & Gamepad ================= */
-  function renderMenu() {
-    itemsEl.innerHTML = MENU_ITEMS.map((t, i) =>
-      `<li data-i="${i}" class="${i === sel ? 'sel' : ''}">${t}</li>`
-    ).join('');
-  }
-
-  function openMenu() {
-    if (menuOpen) return;
-    menuOpen = true;
-    menuEl.classList.add('active');
-    document.getElementById('main-app').style.filter = 'blur(10px) brightness(0.5)';
-    updateSoundUI();
-  }
-
-  function closeMenu() {
-    if (!menuOpen) return;
-    menuOpen = false;
-    menuEl.classList.remove('active');
-    document.getElementById('main-app').style.filter = 'none';
-    updateSoundUI();
-  }
-
-  function moveSel(step) {
-    sel = (sel + step + MENU_ITEMS.length) % MENU_ITEMS.length;
-    renderMenu();
-  }
-
-  function activateSel() {
-    const name = MENU_ITEMS[sel];
-    if (name === 'Resume') { closeMenu(); return; }
-    toast(name + ' — coming soon');
-  }
-
-  itemsEl.addEventListener('click', (e) => {
-    const li = e.target.closest('li');
-    if (!li) return;
-    sel = Number(li.dataset.i);
-    renderMenu();
-    activateSel();
-  });
-
-  menuEl.addEventListener('click', (e) => { if (e.target === menuEl) closeMenu(); });
-  document.getElementById('menu-close').addEventListener('click', (e) => { e.stopPropagation(); closeMenu(); });
-  renderMenu();
-
-  /* ================= Double-tap to open menu ================= */
-  const catchLayer = document.getElementById('catch-layer');
-  let lastTap = 0;
-  catchLayer.addEventListener('pointerdown', (e) => {
-    const now = Date.now();
-    if (now - lastTap < 300) {
-      e.preventDefault();
-      openMenu();
-      lastTap = 0;
-    } else {
-      lastTap = now;
-    }
-  });
-
-  /* ================= Gamepad Controls ================= */
-  document.querySelectorAll('#gamepad .pad-btn').forEach(btn => {
-    const action = btn.dataset.action;
-    btn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      btn.classList.add('active');
-      if (menuOpen) {
-        if (action === 'up') moveSel(-1);
-        else if (action === 'down') moveSel(1);
-        else if (action === 'a' || action === 'start') activateSel();
-        else if (action === 'b') closeMenu();
-      } else if (action === 'start') {
-        openMenu();
-      }
-    });
-    function release() {
-      if (!btn.classList.contains('active')) return;
-      btn.classList.remove('active');
-    }
-    btn.addEventListener('pointerup', release);
-    btn.addEventListener('pointerleave', release);
-    btn.addEventListener('pointercancel', release);
-  });
-
-</script>
-</body>
-</html>
+    sec
