@@ -21,7 +21,48 @@
   .page { position: fixed; inset: 0; display: none; overflow: hidden; }
   .page.active { display: block; }
 
-  /* ================= 1ST: CONFIGURATION SITE ================= */
+  /* ================= 1ST: WIZARD MODAL ================= */
+  #wizard-modal {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 50; width: 480px; max-width: 95vw;
+    background: #f0f0f0; border: 1px solid #0078d7;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.7); color: #000;
+    display: none; flex-direction: column;
+  }
+  #wizard-modal.active { display: flex; }
+  .wiz-titlebar {
+    background: #0078d7; color: #fff; padding: 8px 12px;
+    font-size: 13px; font-weight: bold;
+  }
+  .wiz-body {
+    padding: 20px; font-size: 13px; line-height: 1.5; display: flex; flex-direction: column; gap: 15px;
+  }
+  .wiz-icons { display: flex; gap: 10px; justify-content: center; margin-bottom: 5px; align-items: center; }
+  /* Invert the glyph/iOS icons so they show up on the grey background */
+  .wiz-icons img { height: 24px; width: auto; filter: invert(0.8); }
+  
+  .wiz-links {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+    margin-top: 10px;
+  }
+  .wiz-links-left { display: flex; flex-direction: column; gap: 8px; }
+  .wiz-links a {
+    color: #0078d7; text-decoration: none; font-weight: bold;
+  }
+  .wiz-links a:hover { text-decoration: underline; }
+  .wiz-footer {
+    padding: 12px; text-align: right; border-top: 1px solid #ccc;
+  }
+  .wiz-btn {
+    padding: 6px 24px; font-size: 13px; cursor: pointer;
+    background: #e1e1e1; border: 1px solid #adadad;
+  }
+  .wiz-btn:hover { background: #e5f1fb; border-color: #0078d7; }
+  .copyright {
+    font-size: 5px; color: #666; text-align: right; margin-top: 5px;
+  }
+
+  /* ================= 2ND: SETUP CONFIG ================= */
   #setup-page {
     background: #008080; /* Classic Windows teal */
     display: flex; align-items: center; justify-content: center;
@@ -57,7 +98,7 @@
   }
   .btn-blue:hover { background: #0063b1; }
 
-  /* Device Connection Animation (Half Page Popup) */
+  /* Connecting Animation */
   #connecting-overlay {
     position: fixed; bottom: 0; left: 0; right: 0; height: 50vh;
     background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
@@ -76,41 +117,34 @@
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   .connect-text { font-size: 16px; color: #333; font-weight: bold; }
 
-  /* ================= 2ND: LOADING PAGE ================= */
-  #loading-page {
-    background: #000;
-  }
-  #loading-video {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; z-index: 1;
-  }
-
   /* ================= 3RD: MAIN APP ================= */
   #main-app {
     background: #000;
   }
   
-  /* The key to hiding buttons: Oversize the iframe and center it */
-  #yt-bg {
-    position: absolute; 
-    top: 50%; 
-    left: 50%; 
-    transform: translate(-50%, -50%) scale(1.4); /* Scale up 40% to push UI out */
-    width: 100vw; 
-    height: 56.25vw; /* 16:9 aspect ratio */
-    min-height: 100vh; 
-    min-width: 177.77vh; /* 16:9 aspect ratio */
-    z-index: 1; 
-    border: 0; 
+  /* The ultimate crop to hide all YouTube UI */
+  #yt-container {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(2); /* Scale up 200% */
+    width: 100vw;
+    height: 56.25vw; /* 16:9 ratio */
+    min-height: 100vh;
+    min-width: 177.77vh; /* 16:9 ratio */
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+  #yt-container iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
     pointer-events: none;
   }
 
   #catch-layer { 
-    position: fixed; 
-    inset: 0; 
-    z-index: 5; 
-    background: transparent; 
-    touch-action: none;
+    position: fixed; inset: 0; z-index: 5; 
+    background: transparent; touch-action: none;
   }
 
   /* Sound Button */
@@ -123,7 +157,7 @@
   }
   #sound-btn svg { width: 24px; height: 24px; }
 
-  /* PC Instruction Tooltip (i-box) */
+  /* PC Instruction Tooltip */
   #pc-instruction {
     position: fixed; top: 20%; right: 20px; z-index: 25;
     background: rgba(0,0,0,0.8); color: #fff;
@@ -169,51 +203,51 @@
   .pad-btn.pill:active, .pad-btn.pill.active { background: rgba(255,255,255,0.35); color: #fff; }
   .pad-center { display: flex; flex-direction: column; gap: 8px; align-self: center; pointer-events: auto; }
 
-  /* ================= WIZARD MODAL ================= */
-  #wizard-modal {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    z-index: 50; width: 480px; max-width: 95vw;
-    background: #f0f0f0; border: 1px solid #0078d7;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.7); color: #000;
-    display: none; flex-direction: column;
+  /* ================= 4TH: LOADING PAGE ================= */
+  #loading-page {
+    background: #000;
   }
-  #wizard-modal.active { display: flex; }
-  .wiz-titlebar {
-    background: #0078d7; color: #fff; padding: 8px 12px;
-    font-size: 13px; font-weight: bold;
+  #loading-video {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; z-index: 1;
   }
-  .wiz-body {
-    padding: 20px; font-size: 13px; line-height: 1.5; display: flex; flex-direction: column; gap: 15px;
-  }
-  .wiz-icons { display: flex; gap: 10px; justify-content: center; margin-bottom: 5px; align-items: center; }
-  /* Force new icons to be visible on the grey background */
-  .wiz-icons img { height: 24px; width: auto; filter: invert(0.8); }
-  
-  .wiz-links {
-    display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
-    margin-top: 10px;
-  }
-  .wiz-links-left { display: flex; flex-direction: column; gap: 8px; }
-  .wiz-links a {
-    color: #0078d7; text-decoration: none; font-weight: bold;
-  }
-  .wiz-links a:hover { text-decoration: underline; }
-  .wiz-footer {
-    padding: 12px; text-align: right; border-top: 1px solid #ccc;
-  }
-  .wiz-btn {
-    padding: 6px 24px; font-size: 13px; cursor: pointer;
-    background: #e1e1e1; border: 1px solid #adadad;
-  }
-  .wiz-btn:hover { background: #e5f1fb; border-color: #0078d7; }
-  .copyright {
-    font-size: 5px; color: #666; text-align: right; margin-top: 5px;
-  }
+
 </style>
 </head>
 <body>
 
-<!-- 1ST: CONFIGURATION SITE (Starts hidden) -->
+<!-- WIZARD MODAL (Active on load) -->
+<div id="wizard-modal" class="active">
+  <div class="wiz-titlebar">Notice</div>
+  <div class="wiz-body">
+    <div class="wiz-icons">
+      <!-- Xbox (iOS Filled) -->
+      <img src="https://img.icons8.com/ios-filled/50/xbox.png" alt="Xbox">
+      <!-- PS5 (iOS Outlined) -->
+      <img src="https://img.icons8.com/ios/50/ps-5.png" alt="PS5">
+      <!-- Game Controller (Glyph Neue) -->
+      <img src="https://img.icons8.com/nolan/64/game-controller.png" alt="Game Controller">
+    </div>
+    <div style="text-align: center; font-weight: bold; margin-bottom: 5px;">
+      This Game require license and more package information to be         played.
+      We are assisting some bots to play the full game. To play it click on these links.
+    </div>
+    <div class="wiz-links">
+      <div class="wiz-links-left">
+        <a href="https://www.rockstargames.com/VI" target="_blank" class="ext-link">Rockstar Games GTA VI Original Link</a>
+        <a href="https://www.xbox.com/en-US/games/store/grand-theft-auto-vi/9N4L2M5K3K2K" target="_blank" class="ext-link">Xbox Original GTA VI Link</a>
+        <a href="https://www.playstation.com/en-us/games/grand-theft-auto-vi/" target="_blank" class="ext-link">PS5 Original GTA Link</a>
+      </div>
+      <img src="https://img.icons8.com/color/48/rockstar-games.png" alt="Rockstar Games" width="40" height="40">
+    </div>
+    <div class="copyright">Under © Rockstar Games Fan made Club</div>
+  </div>
+  <div class="wiz-footer">
+    <button class="wiz-btn" id="wiz-continue">Continue</button>
+  </div>
+</div>
+
+<!-- SETUP PAGE -->
 <div id="setup-page" class="page">
   <div class="setup-window">
     <div class="setup-titlebar">Setup Page</div>
@@ -261,22 +295,21 @@
       <button class="btn-blue" id="btn-save-play">Save and Play</button>
     </div>
   </div>
-
-  <!-- Half Page Connecting Animation -->
-  <div id="connecting-overlay">
-    <div class="connect-icon"></div>
-    <div class="connect-text">Connecting to Device...</div>
-  </div>
 </div>
 
-<!-- 2ND: LOADING PAGE -->
-<div id="loading-page" class="page">
-  <video id="loading-video" src="gtaviload1.mp4" playsinline muted autoplay></video>
-</div>
-
-<!-- 3RD: MAIN APP -->
+<!-- MAIN APP -->
 <div id="main-app" class="page">
-  <div id="yt-bg"></div>
+  <!-- The video loads here -->
+  <div id="yt-container">
+    <iframe 
+      id="yt-iframe"
+      src="https://www.youtube-nocookie.com/embed/9DFDdPQjraU?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&playsinline=1&loop=1&playlist=9DFDdPQjraU"
+      frameborder="0"
+      allow="autoplay; encrypted-media">
+    </iframe>
+  </div>
+  
+  <!-- Covers the video to block clicks -->
   <div id="catch-layer"></div>
   
   <button id="sound-btn" aria-label="Toggle Sound"></button>
@@ -306,35 +339,11 @@
   </div>
 </div>
 
-<!-- WIZARD MODAL (Active on load) -->
-<div id="wizard-modal" class="active">
-  <div class="wiz-titlebar">Notice</div>
-  <div class="wiz-body">
-    <div class="wiz-icons">
-      <!-- Xbox Controller (Glyph Neue style) -->
-      <img src="https://img.icons8.com/nolan/64/xbox-controller.png" alt="Xbox Controller" onerror="this.src='https://img.icons8.com/color/48/xbox-controller.png'">
-      <!-- PS5 (iOS Outlined style) -->
-      <img src="https://img.icons8.com/ios/50/ps-5.png" alt="PS5" onerror="this.src='https://img.icons8.com/color/48/ps-5.png'">
-    </div>
-    <div style="text-align: center; font-weight: bold; margin-bottom: 5px;">
-      This Game require license and more package information to be         played.
-      We are assisting some bots to play the full game. To play it click on these links.
-    </div>
-    <div class="wiz-links">
-      <div class="wiz-links-left">
-        <a href="https://www.rockstargames.com/VI" target="_blank" class="ext-link">Rockstar Games GTA VI Original Link</a>
-        <a href="https://www.xbox.com/en-US/games/store/grand-theft-auto-vi/9N4L2M5K3K2K" target="_blank" class="ext-link">Xbox Original GTA VI Link</a>
-        <a href="https://www.playstation.com/en-us/games/grand-theft-auto-vi/" target="_blank" class="ext-link">PS5 Original GTA Link</a>
-      </div>
-      <!-- Icons8 Rockstar Games -->
-      <img src="https://img.icons8.com/color/48/rockstar-games.png" alt="Rockstar Games" width="40" height="40">
-    </div>
-    <div class="copyright">Under © Rockstar Games Fan made Club</div>
-  </div>
-  <div class="wiz-footer">
-    <button class="wiz-btn" id="wiz-continue">Continue</button>
-  </div>
+<!-- LOADING PAGE -->
+<div id="loading-page" class="page">
+  <video id="loading-video" src="gtaviload1.mp4" playsinline muted autoplay></video>
 </div>
+
 
 <script>
   /* ================= DEVICE DETECTION ================= */
@@ -357,15 +366,13 @@
   const mainApp = document.getElementById('main-app');
   const wizardModal = document.getElementById('wizard-modal');
   
-  /* ================= 1ST PAGE: WIZARD NOTICE ================= */
-  const btnContinueWizard = document.getElementById('wiz-continue');
-  
-  btnContinueWizard.addEventListener('click', () => {
+  /* ================= FLOW 1: WIZARD -> SETUP ================= */
+  document.getElementById('wiz-continue').addEventListener('click', () => {
     wizardModal.classList.remove('active');
     setupPage.classList.add('active');
   });
 
-  /* ================= 2ND PAGE: SETUP CONFIG ================= */
+  /* ================= FLOW 2: SETUP -> LOADING ================= */
   const connectingOverlay = document.getElementById('connecting-overlay');
   const cfgDevice = document.getElementById('cfg-device');
   let connectTimer = null;
@@ -387,77 +394,27 @@
     setupPage.classList.remove('active');
     loadingPage.classList.add('active');
     
-    // Automatically transition to Main App after a short loading sequence (e.g., 3 seconds)
+    // Play the 12-second loading video
+    const loadVid = document.getElementById('loading-video');
+    loadVid.currentTime = 0;
+    loadVid.play();
+
+    // Wait exactly 12 seconds, then switch to main app
     setTimeout(() => {
       loadingPage.classList.remove('active');
       mainApp.classList.add('active');
       initMainApp();
-    }, 3000); 
+    }, 12000); 
   });
 
-  /* ================= 3RD PAGE: MAIN APP ================= */
-  const YT_ID = '9DFDdPQjraU';
-  let player = null;
-  let ytReady = false;
-  let ytFailed = false;
-  let muted = true;
-
+  /* ================= FLOW 3: MAIN APP ================= */
   function initMainApp() {
-    if (player) return; // Prevent double init
-    muted = initialMuted;
-
     if (isMobile) {
       document.getElementById('gamepad').style.display = 'flex';
     } else {
       startTooltipLoop();
     }
-
-    loadYouTubeAPI(() => {
-      player = new YT.Player('yt-bg', {
-        videoId: YT_ID,
-        host: 'https://www.youtube-nocookie.com',
-        playerVars: {
-          autoplay: 1, 
-          mute: 1, // MUST start muted to satisfy autoplay policies
-          controls: 0, 
-          disablekb: 1, // Disables keyboard shortcuts for the player
-          fs: 0,
-          modestbranding: 1, 
-          rel: 0, 
-          showinfo: 0, 
-          iv_load_policy: 3,
-          playsinline: 1, 
-          loop: 1, 
-          playlist: YT_ID
-        },
-        events: {
-          onReady: (e) => {
-            ytReady = true;
-            e.target.playVideo();
-            updateSoundUI();
-            
-            // If user requested sound ON, unmute immediately after play starts
-            if (!muted) {
-              setTimeout(() => {
-                try { e.target.unMute(); } catch(err) {}
-              }, 100);
-            }
-          },
-          onStateChange: (e) => {
-            if (e.data === YT.PlayerState.ENDED) e.target.playVideo();
-          },
-          onError: () => { ytFailed = true; }
-        }
-      });
-    });
-  }
-
-  function loadYouTubeAPI(cb) {
-    if (window.YT && window.YT.Player) return cb();
-    window.onYouTubeIframeAPIReady = cb;
-    const s = document.createElement('script');
-    s.src = 'https://www.youtube.com/iframe_api';
-    document.head.appendChild(s);
+    updateSoundUI();
   }
 
   /* ================= PC TOOLTIP LOGIC ================= */
@@ -491,9 +448,11 @@
     loop();
   }
 
-  /* ================= SOUND & UI ================= */
+  /* ================= SOUND CONTROLS ================= */
   const soundBtn = document.getElementById('sound-btn');
-  
+  const ytIframe = document.getElementById('yt-iframe');
+  let muted = true;
+
   const SVG_ON = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/>
@@ -512,50 +471,21 @@
     soundBtn.style.color = muted ? '#ff3333' : '#ffffff';
   }
 
-  function applySound() {
-    if (!ytReady || ytFailed || !player) return;
-    try {
-      muted ? player.mute() : player.unMute();
-    } catch (e) {}
-    updateSoundUI();
-  }
-
   soundBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     muted = !muted;
-    applySound();
-  });
-
-  updateSoundUI();
-
-  /* ================= BACKGROUND AUDIO PREVENTION ================= */
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (player && player.pauseVideo) player.pauseVideo();
-    } else {
-      if (player && player.playVideo && mainApp.classList.contains('active')) {
-        player.playVideo();
-      }
+    
+    // Communicate with the iframe using postMessage for mute/unmute
+    const msg = JSON.stringify({
+      event: 'command',
+      func: muted ? 'mute' : 'unMute',
+      args: []
+    });
+    if (ytIframe.contentWindow) {
+      ytIframe.contentWindow.postMessage(msg, '*');
     }
-  });
-
-  /* ================= TOUCH CONTROLS ================= */
-  document.querySelectorAll('#gamepad .pad-btn').forEach(btn => {
-    btn.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      btn.classList.add('active');
-    });
-    btn.addEventListener('pointerup', (e) => {
-      e.preventDefault();
-      btn.classList.remove('active');
-    });
-    btn.addEventListener('pointerleave', (e) => {
-      btn.classList.remove('active');
-    });
-  });
-
-  document.getElementById('catch-layer').addEventListener('pointerdown', (e) => {
-    e.preventDefault();
+    
+    updateSoundUI();
   });
 
 </script>
